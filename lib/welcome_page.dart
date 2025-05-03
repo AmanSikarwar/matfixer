@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:matfixer/chat_page.dart';
 import 'package:matfixer/gemini_api_key.dart';
 import 'package:matfixer/services/feature_grid.dart';
+import 'package:matfixer/services/guide.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -71,12 +72,26 @@ class _WelcomePageState extends State<WelcomePage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: TextButton.icon(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final url = Uri.parse(
+                      'https://github.com/AmanSikarwar/matfixer',
+                    );
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    } else {
+                      throw 'Could not launch $url';
+                    }
+                  },
                   icon: Icon(Icons.code, color: Colors.white, size: 24),
                   label: Text('GitHub', style: TextStyle(color: Colors.white)),
                   style: TextButton.styleFrom(
-                    backgroundColor: Color(0xFF9A360B), 
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
+                    backgroundColor: Color(0xFF9A360B),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(40),
+                    ),
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                 ),
@@ -96,7 +111,9 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   style: TextButton.styleFrom(
                     backgroundColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(40),
+                    ),
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                 ),
@@ -133,7 +150,9 @@ class _WelcomePageState extends State<WelcomePage> {
                     Text(
                       'MatLabAI: High-Performance',
                       style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width * 0.045, // Responsive
+                        fontSize:
+                            MediaQuery.of(context).size.width *
+                            0.045, // Responsive
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                         textBaseline: TextBaseline.alphabetic,
@@ -143,7 +162,9 @@ class _WelcomePageState extends State<WelcomePage> {
                     Text(
                       'In-Browser LLM Inference Engine',
                       style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width * 0.045, // Responsive
+                        fontSize:
+                            MediaQuery.of(context).size.width *
+                            0.045, // Responsive
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                         textBaseline: TextBaseline.alphabetic,
@@ -155,7 +176,7 @@ class _WelcomePageState extends State<WelcomePage> {
                       'Experience high-performance AI inference right in your browser.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width * 0.02,
+                        fontSize: MediaQuery.of(context).size.width * 0.02,
                         color: const Color.fromARGB(137, 0, 0, 0),
                       ),
                     ),
@@ -194,19 +215,16 @@ class _WelcomePageState extends State<WelcomePage> {
                             child: Text('Get Started >'),
                           ),
                           ElevatedButton(
-                            onPressed: () async {
-                              final url = Uri.parse(
-                                'https://github.com/AmanSikarwar/matfixer',
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => InstallationGuideScreen(),
+                                ),
                               );
-                              if (await canLaunchUrl(url)) {
-                                await launchUrl(
-                                  url,
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              } else {
-                                throw 'Could not launch $url';
-                              }
                             },
+
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black,
