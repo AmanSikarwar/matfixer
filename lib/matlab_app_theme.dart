@@ -188,7 +188,7 @@ class MatlabAppTheme {
       iconTheme: IconThemeData(color: MatlabColors.primaryBlue, size: 24),
       chipTheme: ChipThemeData(
         backgroundColor: MatlabColors.lightBackground,
-        disabledColor: MatlabColors.lightBackground.withOpacity(0.5),
+        disabledColor: MatlabColors.lightBackground.withAlpha(128),
         selectedColor: MatlabColors.primaryBlue,
         secondarySelectedColor: MatlabColors.secondaryBlue,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -402,7 +402,7 @@ class MatlabAppTheme {
       iconTheme: IconThemeData(color: MatlabDarkColors.primaryBlue, size: 24),
       chipTheme: ChipThemeData(
         backgroundColor: MatlabDarkColors.darkBlueBackground,
-        disabledColor: MatlabDarkColors.darkBlueBackground.withOpacity(0.5),
+        disabledColor: MatlabDarkColors.darkBlueBackground.withAlpha(128),
         selectedColor: MatlabDarkColors.primaryBlue,
         secondarySelectedColor: MatlabDarkColors.secondaryBlue,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

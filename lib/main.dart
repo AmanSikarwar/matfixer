@@ -75,7 +75,8 @@ class ChatPage extends StatefulWidget {
 
   final String geminiApiKey;
   final VoidCallback onResetApiKey;
-  
+
+  @override
   State<ChatPage> createState() => _ChatPageState();
 }
 
@@ -128,10 +129,10 @@ class _ChatPageState extends State<ChatPage>
     _animationController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) => Scaffold(
-  appBar: AppBar(
+    appBar: AppBar(
       title: const Text(App.title),
       actions: [
         IconButton(
@@ -176,7 +177,29 @@ class _ChatPageState extends State<ChatPage>
   );
 }
 
-class WelcomePage extends StatelessWidget {
+class WelcomePage extends StatefulWidget {
+  const WelcomePage({super.key});
+
+  @override
+  State<WelcomePage> createState() => _WelcomePageState();
+}
+
+class _WelcomePageState extends State<WelcomePage> {
+  String? _geminiApiKey;
+  late final SharedPreferences prefs;
+
+  @override
+  void initState() async {
+    super.initState();
+    prefs = await SharedPreferences.getInstance();
+    _geminiApiKey = prefs.getString('gemini_api_key');
+  }
+
+  void _resetApiKey() {
+    setState(() => _geminiApiKey = null);
+    prefs.remove('gemini_api_key');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -313,7 +336,11 @@ class WelcomePage extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => ChatPage(),
+                                  builder:
+                                      (context) => ChatPage(
+                                        geminiApiKey: _geminiApiKey!,
+                                        onResetApiKey: _resetApiKey,
+                                      ),
                                 ),
                               );
                             },
@@ -431,3 +458,4 @@ class WelcomePage extends StatelessWidget {
       ),
     );
   }
+}
