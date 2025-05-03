@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:matfixer/matlab_app_theme.dart';
-import 'package:matfixer/welcome_page.dart';
+import 'package:matfixer/screens/auth_wrapper.dart';
+import 'package:matfixer/services/auth_service.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
