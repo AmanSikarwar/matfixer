@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:matfixer/chat_page.dart';
 import 'package:matfixer/demo/api_key_page.dart';
+import 'package:matfixer/gemini_api_key.dart';
 import 'package:matfixer/matlab_app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -28,7 +29,7 @@ class _AppState extends State<App> {
   @override
   void initState() {
     super.initState();
-    _geminiApiKey = widget.prefs.getString('gemini_api_key');
+    _geminiApiKey = widget.prefs.getString('gemini_api_key') ?? geminiApiKey;
   }
 
   void _setApiKey(String apiKey) {
@@ -50,10 +51,7 @@ class _AppState extends State<App> {
           theme: MatlabAppTheme.lightTheme(),
           darkTheme: MatlabAppTheme.darkTheme(),
           themeMode: value,
-          home:
-              _geminiApiKey == null
-                  ? GeminiApiKeyPage(title: App.title, onApiKey: _setApiKey)
-                  : ChatPage(
+          home: ChatPage(
                     geminiApiKey: _geminiApiKey!,
                     onResetApiKey: _resetApiKey,
                   ),
