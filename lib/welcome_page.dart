@@ -133,7 +133,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     Text(
                       'MatLabAI: High-Performance',
                       style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width * 0.05, // Responsive
+                            fontSize: MediaQuery.of(context).size.width * 0.045, // Responsive
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                         textBaseline: TextBaseline.alphabetic,
@@ -143,7 +143,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     Text(
                       'In-Browser LLM Inference Engine',
                       style: TextStyle(
-                        fontSize: MediaQuery.of(context).size.width * 0.05, // Responsive
+                            fontSize: MediaQuery.of(context).size.width * 0.045, // Responsive
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                         textBaseline: TextBaseline.alphabetic,
