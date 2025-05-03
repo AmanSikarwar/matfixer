@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:matfixer/chat_page.dart';
 import 'package:matfixer/gemini_api_key.dart';
+import 'package:matfixer/services/feature_grid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -74,8 +75,8 @@ class _WelcomePageState extends State<WelcomePage> {
                   icon: Icon(Icons.code, color: Colors.white, size: 24),
                   label: Text('GitHub', style: TextStyle(color: Colors.white)),
                   style: TextButton.styleFrom(
-                    backgroundColor: Color(0xFF9A360B), // Darker MATLAB shade
-                    shape: RoundedRectangleBorder(), // Rectangle
+                    backgroundColor: Color(0xFF9A360B), 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                 ),
@@ -95,7 +96,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   style: TextButton.styleFrom(
                     backgroundColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                 ),
@@ -132,7 +133,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     Text(
                       'MatLabAI: High-Performance',
                       style: TextStyle(
-                        fontSize: 60, // Larger font size
+                            fontSize: MediaQuery.of(context).size.width * 0.045, // Responsive
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                         textBaseline: TextBaseline.alphabetic,
@@ -142,7 +143,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     Text(
                       'In-Browser LLM Inference Engine',
                       style: TextStyle(
-                        fontSize: 60, // Larger font size
+                            fontSize: MediaQuery.of(context).size.width * 0.045, // Responsive
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                         textBaseline: TextBaseline.alphabetic,
@@ -154,7 +155,7 @@ class _WelcomePageState extends State<WelcomePage> {
                       'Experience high-performance AI inference right in your browser.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 30, // Bigger font size for the subtitle
+                            fontSize: MediaQuery.of(context).size.width * 0.02,
                         color: const Color.fromARGB(137, 0, 0, 0),
                       ),
                     ),
@@ -181,10 +182,7 @@ class _WelcomePageState extends State<WelcomePage> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.black, // Black background
                               foregroundColor: Colors.white, // White text
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 40,
-                                vertical: 20,
-                              ),
+                              padding: EdgeInsets.all(20),
                               textStyle: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -215,10 +213,7 @@ class _WelcomePageState extends State<WelcomePage> {
                               side: BorderSide(
                                 color: Colors.black,
                               ), // Optional: border for visibility
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 40,
-                                vertical: 20,
-                              ),
+                              padding: EdgeInsets.all(20),
                               textStyle: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -233,75 +228,7 @@ class _WelcomePageState extends State<WelcomePage> {
                       ),
                     ),
                     SizedBox(height: 50),
-                    Center(
-                      child: SizedBox(
-                        width: 1000,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Card(
-                            elevation: 5,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'What is Agentic AI for MATLAB?',
-                                    style: TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    'Agentic AI for MATLAB is an intelligent assistant designed to support users in code generation, debugging, data visualization, and algorithm development within MATLAB. '
-                                    'By understanding natural language inputs, it can automate repetitive tasks, suggest optimized solutions, and help users learn MATLAB more effectively.',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  SizedBox(height: 20),
-                                  Text(
-                                    'Key Capabilities:',
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    '- Generate MATLAB scripts/functions from plain English\n'
-                                    '- Suggest corrections and optimizations for MATLAB code\n'
-                                    '- Visualize data and simulation results on request\n'
-                                    '- Explain MATLAB functions, syntax, and concepts interactively\n'
-                                    '- Integrate with Simulink and toolboxes for enhanced workflows',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  SizedBox(height: 20),
-                                  Text(
-                                    'Whether you\'re a beginner learning MATLAB or an expert seeking automation, Agentic AI enhances productivity by serving as a smart co-pilot in your MATLAB environment.',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 50),
+                    FeatureGrid(),
                   ],
                 ),
               ),
