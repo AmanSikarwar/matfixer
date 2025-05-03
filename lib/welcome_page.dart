@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:matfixer/chat_page.dart';
 import 'package:matfixer/gemini_api_key.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -195,12 +196,18 @@ class _WelcomePageState extends State<WelcomePage> {
                             child: Text('Get Started >'),
                           ),
                           ElevatedButton(
-                            onPressed: () {
-                              Scrollable.ensureVisible(
-                                context,
-                                alignment: 0.5,
-                                duration: Duration(seconds: 1),
+                            onPressed: () async {
+                              final url = Uri.parse(
+                                'https://github.com/AmanSikarwar/matfixer',
                               );
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              } else {
+                                throw 'Could not launch $url';
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
@@ -225,57 +232,71 @@ class _WelcomePageState extends State<WelcomePage> {
                         ],
                       ),
                     ),
-
                     SizedBox(height: 50),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Card(
-                        elevation: 5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                    Center(
+                      child: SizedBox(
+                        width: 1000,
                         child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'What is MATLAB?',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blueAccent,
-                                ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Card(
+                            elevation: 5,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'What is Agentic AI for MATLAB?',
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Agentic AI for MATLAB is an intelligent assistant designed to support users in code generation, debugging, data visualization, and algorithm development within MATLAB. '
+                                    'By understanding natural language inputs, it can automate repetitive tasks, suggest optimized solutions, and help users learn MATLAB more effectively.',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  SizedBox(height: 20),
+                                  Text(
+                                    'Key Capabilities:',
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    '- Generate MATLAB scripts/functions from plain English\n'
+                                    '- Suggest corrections and optimizations for MATLAB code\n'
+                                    '- Visualize data and simulation results on request\n'
+                                    '- Explain MATLAB functions, syntax, and concepts interactively\n'
+                                    '- Integrate with Simulink and toolboxes for enhanced workflows',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  SizedBox(height: 20),
+                                  Text(
+                                    'Whether you\'re a beginner learning MATLAB or an expert seeking automation, Agentic AI enhances productivity by serving as a smart co-pilot in your MATLAB environment.',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(height: 12),
-                              Text(
-                                'MATLAB (Matrix Laboratory) is a high-level programming language used for numerical computing. '
-                                'It is widely used for its ability to manipulate matrices, perform numerical analysis, '
-                                'develop algorithms, and visualize data in a variety of fields including engineering, physics, and mathematics.',
-                                style: TextStyle(fontSize: 18),
-                              ),
-                              SizedBox(height: 20),
-                              Text(
-                                'MATLAB Key Features:',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                '- Matrix-based calculations\n'
-                                '- Built-in plotting tools\n'
-                                '- Extensive libraries for data analysis\n'
-                                '- Integration with other programming languages like C/C++, Python, etc.',
-                                style: TextStyle(fontSize: 18),
-                              ),
-                              SizedBox(height: 20),
-                              Text(
-                                'MATLAB is an essential tool for engineers, scientists, and data analysts looking to develop and prototype algorithms with ease.',
-                                style: TextStyle(fontSize: 18),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
