@@ -20,20 +20,23 @@ class FeatureGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: limitedFeatures.length,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: 32,
-              mainAxisSpacing: 32,
-              childAspectRatio: 2,
+        return SizedBox(
+          width: screenWidth*0.75,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: limitedFeatures.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 32,
+                mainAxisSpacing: 32,
+                childAspectRatio: 1.75,
+              ),
+              itemBuilder: (context, index) =>
+                  FeatureCard(feature: limitedFeatures[index]),
             ),
-            itemBuilder: (context, index) =>
-                FeatureCard(feature: limitedFeatures[index]),
           ),
         );
       },
@@ -78,15 +81,15 @@ class _FeatureCardState extends State<FeatureCard> {
                     children: [
                       Image.asset(
                         widget.feature.icon,
-                        height: 36,
-                        width: 36,
+                        height: 80,
+                        width: 80,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           widget.feature.title,
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                           maxLines: 2,
@@ -99,7 +102,7 @@ class _FeatureCardState extends State<FeatureCard> {
                   Text(
                     widget.feature.description,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 15,
                       color: Colors.black87,
                     ),
                     maxLines: 4,

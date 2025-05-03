@@ -4,8 +4,8 @@ import 'package:matfixer/models/feature_model.dart';
 final List<Feature> features = [
   Feature(
     icon: 'assets/rag_logo.png', // AI diagnosis icon
-    title: 'Smart Code Error Diagnosis',
-    description: 'Leverages RAG and LLM to detect, explain, and suggest solutions for MATLAB code errors.',
+    title: 'Smart Error Diagnosis',
+    description: 'Leverages RAG and LLM to detect,, and suggest changes for MATLAB code errors.',
   ),
   Feature(
     icon: 'assets/context_logo.png', // Context or suggestions
