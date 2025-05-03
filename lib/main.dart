@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:matfixer/chat_page.dart';
-import 'package:matfixer/demo/api_key_page.dart';
-import 'package:matfixer/gemini_api_key.dart';
 import 'package:matfixer/matlab_app_theme.dart';
+import 'package:matfixer/screens/auth_wrapper.dart';
+import 'package:matfixer/services/auth_service.dart';
 import 'package:matfixer/welcome_page.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
@@ -25,35 +25,20 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  String? _geminiApiKey;
-
   @override
-  void initState() {
-    super.initState();
-    _geminiApiKey = widget.prefs.getString('gemini_api_key') ?? geminiApiKey;
-  }
-
-  void _setApiKey(String apiKey) {
-    setState(() => _geminiApiKey = apiKey);
-    widget.prefs.setString('gemini_api_key', apiKey);
-  }
-
-  void _resetApiKey() {
-    setState(() => _geminiApiKey = null);
-    widget.prefs.remove('gemini_api_key');
-  }
-
-  @override
-  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(
-    valueListenable: App.themeMode,
-    builder:
-        (context, value, child) => MaterialApp(
-          title: App.title,
-          theme: MatlabAppTheme.lightTheme(),
-          darkTheme: MatlabAppTheme.darkTheme(),
-          themeMode: value,
-          home: WelcomePage(),
-          debugShowCheckedModeBanner: false,
-        ),
+  Widget build(BuildContext context) => Provider<AuthService>(
+    create: (_) => AuthService(),
+    child: ValueListenableBuilder<ThemeMode>(
+      valueListenable: App.themeMode,
+      builder:
+          (context, value, child) => MaterialApp(
+            title: App.title,
+            theme: MatlabAppTheme.lightTheme(),
+            darkTheme: MatlabAppTheme.darkTheme(),
+            themeMode: value,
+            home: AuthWrapper(),
+            debugShowCheckedModeBanner: false,
+          ),
+    ),
   );
 }
