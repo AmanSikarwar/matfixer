@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>507407242653-qh8g72g1u1ubcmakhbmabbamdfe2r1mg.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.507407242653-qh8g72g1u1ubcmakhbmabbamdfe2r1mg</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCfgFc8nuJYDZhUFIo0Akaum7dSCE2NjtY</string>
+	<key>GCM_SENDER_ID</key>
+	<string>507407242653</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>io.github.amansikarwar.matfixer</string>
+	<key>PROJECT_ID</key>
+	<string>matfixer-ai</string>
+	<key>STORAGE_BUCKET</key>
+	<string>matfixer-ai.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:507407242653:ios:9fd4888b0d6c20ac070b74</string>
+</dict>
+</plist>
