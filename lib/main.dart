@@ -3,6 +3,7 @@ import 'package:matfixer/chat_page.dart';
 import 'package:matfixer/demo/api_key_page.dart';
 import 'package:matfixer/gemini_api_key.dart';
 import 'package:matfixer/matlab_app_theme.dart';
+import 'package:matfixer/welcome_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
@@ -51,10 +52,7 @@ class _AppState extends State<App> {
           theme: MatlabAppTheme.lightTheme(),
           darkTheme: MatlabAppTheme.darkTheme(),
           themeMode: value,
-          home: ChatPage(
-                    geminiApiKey: _geminiApiKey!,
-                    onResetApiKey: _resetApiKey,
-                  ),
+          home: WelcomePage(),
           debugShowCheckedModeBanner: false,
         ),
   );

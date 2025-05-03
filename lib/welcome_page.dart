@@ -15,10 +15,16 @@ class _WelcomePageState extends State<WelcomePage> {
   late final SharedPreferences prefs;
 
   @override
-  void initState() async {
+  void initState() {
     super.initState();
+    _initializePrefs();
+  }
+
+  Future<void> _initializePrefs() async {
     prefs = await SharedPreferences.getInstance();
-    _geminiApiKey = prefs.getString('gemini_api_key') ?? geminiApiKey;
+    setState(() {
+      _geminiApiKey = prefs.getString('gemini_api_key') ?? geminiApiKey;
+    });
   }
 
   void _resetApiKey() {
