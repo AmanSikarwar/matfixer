@@ -8,27 +8,38 @@ class FeatureGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final limitedFeatures = features.take(6).toList();
+    final screenWidth = MediaQuery.of(context).size.width;
 
-    return Center(
-      child: SizedBox(
-        width: 1000,
-        child: GridView.count(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          crossAxisCount: 3,
-          crossAxisSpacing: 32,
-          mainAxisSpacing: 32,
-          childAspectRatio: 2,
+    int crossAxisCount = 3;
+    if (screenWidth < 1000) {
+      crossAxisCount = 2;
+    }
+    if (screenWidth < 600) {
+      crossAxisCount = 1;
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Padding(
           padding: const EdgeInsets.all(16),
-          children: limitedFeatures
-              .map((feature) => FeatureCard(feature: feature))
-              .toList(),
-        ),
-      ),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: limitedFeatures.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 32,
+              mainAxisSpacing: 32,
+              childAspectRatio: 2,
+            ),
+            itemBuilder: (context, index) =>
+                FeatureCard(feature: limitedFeatures[index]),
+          ),
+        );
+      },
     );
   }
 }
-
 class FeatureCard extends StatefulWidget {
   final Feature feature;
 

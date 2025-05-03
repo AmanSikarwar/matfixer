@@ -75,8 +75,8 @@ class _WelcomePageState extends State<WelcomePage> {
                   icon: Icon(Icons.code, color: Colors.white, size: 24),
                   label: Text('GitHub', style: TextStyle(color: Colors.white)),
                   style: TextButton.styleFrom(
-                    backgroundColor: Color(0xFF9A360B), // Darker MATLAB shade
-                    shape: RoundedRectangleBorder(borderRadius: ), // Rectangle
+                    backgroundColor: Color(0xFF9A360B), 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                 ),
@@ -96,7 +96,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   style: TextButton.styleFrom(
                     backgroundColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                 ),
@@ -133,7 +133,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     Text(
                       'MatLabAI: High-Performance',
                       style: TextStyle(
-                        fontSize: 60, // Larger font size
+                            fontSize: MediaQuery.of(context).size.width * 0.05, // Responsive
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                         textBaseline: TextBaseline.alphabetic,
@@ -143,7 +143,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     Text(
                       'In-Browser LLM Inference Engine',
                       style: TextStyle(
-                        fontSize: 60, // Larger font size
+                        fontSize: MediaQuery.of(context).size.width * 0.05, // Responsive
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                         textBaseline: TextBaseline.alphabetic,
@@ -155,7 +155,7 @@ class _WelcomePageState extends State<WelcomePage> {
                       'Experience high-performance AI inference right in your browser.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 30, // Bigger font size for the subtitle
+                            fontSize: MediaQuery.of(context).size.width * 0.02,
                         color: const Color.fromARGB(137, 0, 0, 0),
                       ),
                     ),
@@ -182,10 +182,7 @@ class _WelcomePageState extends State<WelcomePage> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.black, // Black background
                               foregroundColor: Colors.white, // White text
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 40,
-                                vertical: 20,
-                              ),
+                              padding: EdgeInsets.all(20),
                               textStyle: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -216,10 +213,7 @@ class _WelcomePageState extends State<WelcomePage> {
                               side: BorderSide(
                                 color: Colors.black,
                               ), // Optional: border for visibility
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 40,
-                                vertical: 20,
-                              ),
+                              padding: EdgeInsets.all(20),
                               textStyle: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
