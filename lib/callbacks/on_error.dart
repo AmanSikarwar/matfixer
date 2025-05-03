@@ -11,7 +11,7 @@ import '../gemini_api_key.dart';
 void main() => runApp(const App());
 
 class App extends StatelessWidget {
-  static const title = 'Example: Google Gemini AI';
+  static const title = 'Example: Welcome Message';
 
   const App({super.key});
 
@@ -23,10 +23,18 @@ class App extends StatelessWidget {
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
 
+  void _onError(BuildContext context, LlmException error) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Error: ${error.message}')));
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text(App.title)),
     body: LlmChatView(
+      onErrorCallback: _onError,
+      errorMessage: 'An error occurred',
       provider: GeminiProvider(
         model: GenerativeModel(model: 'gemini-2.0-flash', apiKey: geminiApiKey),
       ),

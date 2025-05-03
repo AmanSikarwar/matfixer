@@ -11,7 +11,7 @@ import '../gemini_api_key.dart';
 void main() => runApp(const App());
 
 class App extends StatelessWidget {
-  static const title = 'Example: Google Gemini AI';
+  static const title = 'Example: Welcome Message';
 
   const App({super.key});
 
@@ -27,6 +27,7 @@ class ChatPage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text(App.title)),
     body: LlmChatView(
+      welcomeMessage: 'Hello and welcome to the Flutter AI Toolkit!',
       provider: GeminiProvider(
         model: GenerativeModel(model: 'gemini-2.0-flash', apiKey: geminiApiKey),
       ),

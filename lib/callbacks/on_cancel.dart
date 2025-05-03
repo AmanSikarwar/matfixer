@@ -11,7 +11,7 @@ import '../gemini_api_key.dart';
 void main() => runApp(const App());
 
 class App extends StatelessWidget {
-  static const title = 'Example: Google Gemini AI';
+  static const title = 'Example: Welcome Message';
 
   const App({super.key});
 
@@ -23,10 +23,18 @@ class App extends StatelessWidget {
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
 
+  void _onCancel(BuildContext context) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Chat cancelled')));
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text(App.title)),
     body: LlmChatView(
+      onCancelCallback: _onCancel,
+      cancelMessage: 'Request cancelled',
       provider: GeminiProvider(
         model: GenerativeModel(model: 'gemini-2.0-flash', apiKey: geminiApiKey),
       ),
