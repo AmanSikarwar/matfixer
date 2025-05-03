@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:matfixer/services/auth_service.dart';
 
@@ -9,7 +10,6 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
-  // Define threshold for responsive layout
   final double _mobileWidth = 600;
   final double _maxFormWidth = 450;
 
@@ -53,13 +53,11 @@ class _AuthPageState extends State<AuthPage> {
             _emailController.text.trim(),
             _passwordController.text.trim(),
           );
-          // If successful, the AuthStateChanges listener in wrapper will handle navigation
         } else {
           await _authService.registerWithEmailAndPassword(
             _emailController.text.trim(),
             _passwordController.text.trim(),
           );
-          // If successful, the AuthStateChanges listener in wrapper will handle navigation
         }
       } catch (e) {
         setState(() {
@@ -107,7 +105,6 @@ class _AuthPageState extends State<AuthPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Logo or app name
                         Icon(
                           Icons.auto_fix_high,
                           size: isDesktop ? 100 : 80,
@@ -125,7 +122,6 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                         SizedBox(height: isDesktop ? 40 : 32),
 
-                        // Email field
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -148,7 +144,6 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Password field
                         TextFormField(
                           controller: _passwordController,
                           obscureText: true,
@@ -169,7 +164,6 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Confirm password field (only for registration)
                         if (!_isLogin) ...[
                           TextFormField(
                             controller: _confirmPasswordController,
@@ -192,7 +186,6 @@ class _AuthPageState extends State<AuthPage> {
                           const SizedBox(height: 16),
                         ],
 
-                        // Error message
                         if (_error.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 16.0),
@@ -205,7 +198,6 @@ class _AuthPageState extends State<AuthPage> {
                             ),
                           ),
 
-                        // Submit button
                         ElevatedButton(
                           onPressed: _isLoading ? null : _submitForm,
                           style: ElevatedButton.styleFrom(
@@ -235,7 +227,6 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Toggle between login and registration
                         TextButton(
                           onPressed: _toggleFormMode,
                           child: Text(
@@ -245,31 +236,101 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                         ),
 
-                        // Forgot password button (only for login)
                         if (_isLogin)
                           TextButton(
                             onPressed: () {
-                              // TODO: Implement forgot password functionality
-                              if (_emailController.text.isNotEmpty) {
-                                _authService.resetPassword(
-                                  _emailController.text.trim(),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Password reset email sent'),
-                                  ),
-                                );
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Please enter your email address',
+                              final emailController = TextEditingController();
+                              showDialog(
+                                context: context,
+                                builder:
+                                    (dialogContext) => AlertDialog(
+                                      title: const Text('Reset Password'),
+                                      content: TextField(
+                                        controller: emailController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Email',
+                                          hintText: 'Enter your email',
+                                        ),
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed:
+                                              () =>
+                                                  Navigator.pop(dialogContext),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () async {
+                                            if (emailController.text
+                                                .trim()
+                                                .isNotEmpty) {
+                                              try {
+                                                Navigator.pop(dialogContext);
+
+                                                final scaffoldContext = context;
+
+                                                await FirebaseAuth.instance
+                                                    .sendPasswordResetEmail(
+                                                      email:
+                                                          emailController.text
+                                                              .trim(),
+                                                    );
+
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(
+                                                    scaffoldContext,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Password reset email sent',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.green,
+                                                    ),
+                                                  );
+                                                }
+                                              } catch (error) {
+                                                final scaffoldContext = context;
+
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(
+                                                    scaffoldContext,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Error: ${error.toString()}',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            } else {
+                                              ScaffoldMessenger.of(
+                                                dialogContext,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Please enter your email',
+                                                  ),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          child: const Text('Reset'),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                );
-                              }
+                              );
                             },
-                            child: const Text('Forgot Password?'),
+                            child: const Text(
+                              'Forgot Password?',
+                              style: TextStyle(color: Colors.blue),
+                            ),
                           ),
                       ],
                     ),

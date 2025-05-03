@@ -1,6 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:matfixer/gemini_api_key.dart';
 import 'package:matfixer/matlab_app_theme.dart';
 import 'package:matfixer/screens/auth_wrapper.dart';
 import 'package:matfixer/services/auth_service.dart';
@@ -30,24 +29,6 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  String? _geminiApiKey;
-
-  @override
-  void initState() {
-    super.initState();
-    _geminiApiKey = widget.prefs.getString('gemini_api_key') ?? geminiApiKey;
-  }
-
-  void _setApiKey(String apiKey) {
-    setState(() => _geminiApiKey = apiKey);
-    widget.prefs.setString('gemini_api_key', apiKey);
-  }
-
-  void _resetApiKey() {
-    setState(() => _geminiApiKey = null);
-    widget.prefs.remove('gemini_api_key');
-  }
-
   @override
   Widget build(BuildContext context) => Provider<AuthService>(
     create: (_) => AuthService(),

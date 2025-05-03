@@ -1,1 +1,24 @@
-{"flutter":{"platforms":{"macos":{"default":{"projectId":"matfixer-ai","appId":"1:507407242653:ios:9fd4888b0d6c20ac070b74","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"matfixer-ai","configurations":{"macos":"1:507407242653:ios:9fd4888b0d6c20ac070b74","web":"1:507407242653:web:77234d46f63fe1d5070b74","windows":"1:507407242653:web:2948ddcee66bbf80070b74"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "macos": {
+        "default": {
+          "projectId": "matfixer-ai",
+          "appId": "1:507407242653:ios:9fd4888b0d6c20ac070b74",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "matfixer-ai",
+          "configurations": {
+            "macos": "1:507407242653:ios:9fd4888b0d6c20ac070b74",
+            "web": "1:507407242653:web:77234d46f63fe1d5070b74",
+            "windows": "1:507407242653:web:2948ddcee66bbf80070b74"
+          }
+        }
+      }
+    }
+  }
+}
