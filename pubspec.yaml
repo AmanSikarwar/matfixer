@@ -25,6 +25,7 @@ dependencies:
   split_view: ^3.2.1
   url_launcher: ^6.3.1
   uuid: ^4.5.1
+  flutter_highlight: ^0.7.0
 
 dev_dependencies:
   flutter_test:
@@ -36,3 +37,5 @@ flutter:
 
   assets:
     - assets/
+
+
