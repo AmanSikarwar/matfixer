@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:flutter_ai_toolkit/flutter_ai_toolkit.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:matfixer/main.dart';
 import 'package:matfixer/matlab_chat_theme.dart';
+import 'package:matfixer/providers/fast_api_llm_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:matfixer/services/firestore_service.dart';
 
@@ -35,7 +34,7 @@ class ChatPage extends StatefulWidget {
   State<ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   // List of conversations
   final List<Conversation> _conversations = [];
 
@@ -46,17 +45,27 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _newConversationController =
       TextEditingController();
 
+  // Add text controller for feedback
+  final TextEditingController _feedbackController = TextEditingController();
+
   // Sidebar state
   bool _isSidebarExpanded = true;
 
   // Timer for periodic saving
   Timer? _saveTimer;
 
-  late final _provider = GeminiProvider(
-    model: GenerativeModel(
-      model: 'gemini-2.0-flash',
-      apiKey: widget.geminiApiKey,
-    ),
+  // Debounce timer to prevent too frequent saves
+  Timer? _debounceTimer;
+
+  // Flag to track app lifecycle state for better resource management
+  bool _isInForeground = true;
+
+  late final _provider = FastApiLlmProvider(
+    baseUrl: 'http://172.18.40.104:8002',
+    history:
+        _conversations.isNotEmpty
+            ? _conversations[_currentConversationIndex].history
+            : [],
   );
 
   // Add Firestore service
@@ -77,10 +86,21 @@ class _ChatPageState extends State<ChatPage> {
   // Add hover tracking state
   int? _hoveredConversationIndex;
 
+  // Debounced save function to prevent excessive Firestore operations
+  void _debouncedSave() {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel();
+    }
+
+    _debounceTimer = Timer(const Duration(seconds: 2), () {
+      _saveConversations();
+    });
+  }
+
   // Save conversations to Firestore
   Future<void> _saveConversations() async {
-    // Don't save if we're updating from stream or already saving
-    if (_updatingFromStream || _isSaving) return;
+    // Don't save if we're updating from stream or already saving or app is in background
+    if (_updatingFromStream || _isSaving || !_isInForeground) return;
 
     try {
       _isSaving = true;
@@ -89,29 +109,20 @@ class _ChatPageState extends State<ChatPage> {
           _currentConversationIndex < _conversations.length) {
         // Make a copy of the provider history to avoid concurrent modification
         final currentHistory = List<ChatMessage>.from(_provider.history);
-        dev.log(
-          "Saving current conversation with ${currentHistory.length} messages",
-        );
 
         if (currentHistory.isNotEmpty ||
             _conversations[_currentConversationIndex].history.isEmpty) {
           _conversations[_currentConversationIndex].history = currentHistory;
-        } else {
-          dev.log("Skipping overwrite of non-empty history with empty history");
         }
       }
 
       // Create a defensive copy of the conversations list
       final conversationsCopy = List<Conversation>.from(_conversations);
 
-      // Log each conversation's message count before saving
-      for (int i = 0; i < conversationsCopy.length; i++) {
-        dev.log(
-          "Before saving: Conversation ${conversationsCopy[i].name} has ${conversationsCopy[i].history.length} messages",
-        );
+      // Only save if we have conversations to save
+      if (conversationsCopy.isNotEmpty) {
+        await _firestoreService.saveConversations(conversationsCopy);
       }
-
-      await _firestoreService.saveConversations(conversationsCopy);
     } catch (e) {
       debugPrint('Error in _saveConversations: $e');
     } finally {
@@ -128,13 +139,6 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final loadedConversations = await _firestoreService.loadConversations();
 
-      // Log what we loaded
-      for (int i = 0; i < loadedConversations.length; i++) {
-        dev.log(
-          "Loaded conversation ${loadedConversations[i].name} with ${loadedConversations[i].history.length} messages",
-        );
-      }
-
       setState(() {
         _conversations.clear();
         _conversations.addAll(loadedConversations);
@@ -146,9 +150,6 @@ class _ChatPageState extends State<ChatPage> {
           // Make a defensive copy of the history
           final historyList = List<ChatMessage>.from(_conversations[0].history);
           _provider.history = historyList;
-          dev.log(
-            "Setting initial conversation with ${historyList.length} messages",
-          );
         } else {
           // Create a default conversation if none exists
           _createNewConversationWithoutSaving(name: 'New Chat');
@@ -203,15 +204,17 @@ class _ChatPageState extends State<ChatPage> {
       history: [],
     );
 
+    // Add the new conversation to the list
     setState(() {
       _conversations.add(newConversation);
       _switchToConversation(_conversations.length - 1);
     });
 
-    _saveConversations(); // Save after creating
+    // Save the new conversation to Firestore
+    _firestoreService.saveConversation(newConversation);
   }
 
-  // Switch to a specific conversation
+  // Switch to a specific conversation with optimized saving
   void _switchToConversation(int index) {
     if (index >= 0 && index < _conversations.length) {
       // First save the current conversation if we have one
@@ -220,38 +223,24 @@ class _ChatPageState extends State<ChatPage> {
         // Create a defensive copy of current history
         final currentHistory = List<ChatMessage>.from(_provider.history);
 
-        // Log what we're saving
-        dev.log(
-          "Saving current conversation history before switching. Messages: ${currentHistory.length}",
-        );
-
         // Only save if we have messages to save and they've changed
         if (currentHistory.isNotEmpty) {
           _conversations[_currentConversationIndex].history = currentHistory;
 
-          // Save directly without using a Future to avoid race conditions
-          try {
-            // Create a defensive copy with a fresh history list
-            final conversation = Conversation(
-              id: _conversations[_currentConversationIndex].id,
-              name: _conversations[_currentConversationIndex].name,
-              history: currentHistory,
-            );
-            _firestoreService.saveConversation(conversation);
+          // Create a defensive copy with a fresh history list for saving
+          final conversationToSave = Conversation(
+            id: _conversations[_currentConversationIndex].id,
+            name: _conversations[_currentConversationIndex].name,
+            history: currentHistory,
+          );
 
-            // Immediately perform the switch without waiting
-            _performConversationSwitch(index);
-          } catch (e) {
-            dev.log("Error during conversation switch: $e");
-            // Still perform the switch even if saving fails
-            _performConversationSwitch(index);
-          }
-        } else {
-          _performConversationSwitch(index);
+          // Save in background
+          _firestoreService.saveConversation(conversationToSave);
         }
-      } else {
-        _performConversationSwitch(index);
       }
+
+      // Now perform the switch
+      _performConversationSwitch(index);
     }
   }
 
@@ -259,38 +248,30 @@ class _ChatPageState extends State<ChatPage> {
   void _performConversationSwitch(int index) {
     // Safety check - make sure the index is still valid
     if (index < 0 || index >= _conversations.length) {
-      dev.log(
-        "Invalid conversation index: $index, total conversations: ${_conversations.length}",
-      );
       return;
     }
 
     setState(() {
       _currentConversationIndex = index;
 
-      // Double check the index is still valid (could have changed during setState)
+      // Double check the index is still valid
       if (index < _conversations.length) {
-        // Log what we're loading
-        dev.log(
-          "Loading conversation ${_conversations[index].name} with ${_conversations[index].history.length} messages",
-        );
-
         // IMPORTANT: Make a fresh copy of the history to avoid reference issues
         final historyList = List<ChatMessage>.from(
           _conversations[index].history,
         );
         _provider.history = historyList;
       } else {
-        // If somehow the conversation disappeared, reset to empty history
-        dev.log("Conversation no longer exists at index $index");
+        // If conversation disappeared, reset to empty history
         _provider.history = [];
       }
     });
   }
 
-  // Subscribe to real-time conversation updates
+  // Subscribe to real-time conversation updates with error handling and retries
   void _subscribeToConversations() {
     _conversationsSubscription?.cancel();
+
     _conversationsSubscription = _firestoreService.streamConversations().listen(
       (updatedConversations) {
         if (_updatingFromStream) return; // Avoid nested updates
@@ -315,13 +296,13 @@ class _ChatPageState extends State<ChatPage> {
           final sortedConversations =
               updatedConversations.toList()..sort(
                 (a, b) => _getConversationTimeValue(
-                  b,
-                ).compareTo(_getConversationTimeValue(a)),
+                  a,
+                ).compareTo(_getConversationTimeValue(b)),
               );
 
           setState(() {
             _conversations.clear();
-            _conversations.addAll(sortedConversations);
+            _conversations.addAll(sortedConversations.cast<Conversation>());
 
             // Restore current conversation position if possible
             if (currentConvId != null && _conversations.isNotEmpty) {
@@ -364,6 +345,13 @@ class _ChatPageState extends State<ChatPage> {
       },
       onError: (error) {
         debugPrint('Error streaming conversations: $error');
+        // Reconnect after a delay
+        Future.delayed(const Duration(seconds: 5), _subscribeToConversations);
+      },
+      onDone: () {
+        debugPrint('Conversation stream closed. Reconnecting...');
+        // Reconnect after a delay
+        Future.delayed(const Duration(seconds: 5), _subscribeToConversations);
       },
     );
   }
@@ -428,7 +416,13 @@ class _ChatPageState extends State<ChatPage> {
         _conversations[_currentConversationIndex].history = [];
         _provider.history = [];
       });
-      _saveConversations(); // Save after clearing
+
+      // Directly update in Firestore
+      if (_currentConversationIndex < _conversations.length) {
+        _firestoreService.saveConversation(
+          _conversations[_currentConversationIndex],
+        );
+      }
     }
   }
 
@@ -438,7 +432,9 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _conversations[index].name = newName;
       });
-      _saveConversations(); // Save after renaming
+
+      // Save directly instead of using periodic save
+      _firestoreService.saveConversation(_conversations[index]);
     }
   }
 
@@ -527,9 +523,158 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  // Show dialog to collect feedback
+  Future<void> _showFeedbackDialog() async {
+    _feedbackController.clear();
+    bool isProblemResolved = false;
+
+    return showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            builder:
+                (context, setState) => AlertDialog(
+                  title: const Text('Provide Feedback'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Problem resolution checkbox
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: isProblemResolved,
+                            onChanged: (value) {
+                              setState(() {
+                                isProblemResolved = value ?? false;
+                              });
+                            },
+                          ),
+                          const Text('Did you get your problem resolved?'),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      const Text(
+                        'Please share your feedback about the current conversation:',
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _feedbackController,
+                        decoration: const InputDecoration(
+                          hintText: 'Your feedback here',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 4,
+                        autofocus: true,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Note: Your feedback will include the entire conversation history.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _sendFeedback(
+                          _feedbackController.text,
+                          isProblemResolved,
+                        );
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Submit'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+  }
+
+  // Send feedback to Firestore
+  Future<void> _sendFeedback(String comment, bool isProblemResolved) async {
+    if (_currentConversationIndex >= 0 &&
+        _currentConversationIndex < _conversations.length) {
+      try {
+        // Get current conversation details
+        final conversation = _conversations[_currentConversationIndex];
+
+        // Create feedback data
+        final feedback = {
+          'conversationId': conversation.id,
+          'conversationName': conversation.name,
+          'timestamp': DateTime.now().toIso8601String(),
+          'comment': comment,
+          'isProblemResolved': isProblemResolved,
+          'history':
+              conversation.history
+                  .map(
+                    (msg) => {
+                      'role': msg.origin.isUser ? 'user' : 'llm',
+                      'content': msg.text,
+                    },
+                  )
+                  .toList(),
+        };
+
+        // Save feedback to Firestore
+        await _firestoreService.addFeedback(feedback);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thank you for your feedback!')),
+        );
+      } catch (e) {
+        debugPrint('Error sending feedback: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to send feedback. Please try again.'),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No active conversation to provide feedback on.'),
+        ),
+      );
+    }
+  }
+
+  // Handle app lifecycle changes
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      // App came to foreground
+      _isInForeground = true;
+
+      // Reset stream subscription to ensure we get fresh data
+      _subscribeToConversations();
+    } else if (state == AppLifecycleState.paused) {
+      // App went to background
+      _isInForeground = false;
+
+      // Save current state before going to background
+      if (!_isSaving) {
+        _saveConversations();
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+
+    // Register for lifecycle events
+    WidgetsBinding.instance.addObserver(this);
 
     // Load saved conversations from Firestore
     _loadConversations();
@@ -538,13 +683,32 @@ class _ChatPageState extends State<ChatPage> {
     _saveTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _saveConversations();
     });
+
+    // Listen for changes to the provider's history
+    _provider.addListener(_onProviderHistoryChanged);
+  }
+
+  void _onProviderHistoryChanged() {
+    // When the provider history changes, schedule a save operation
+    _debouncedSave();
   }
 
   @override
   void dispose() {
+    // Unregister from lifecycle events
+    WidgetsBinding.instance.removeObserver(this);
+
+    // Remove provider listener
+    _provider.removeListener(_onProviderHistoryChanged);
+
     // Cancel subscriptions and timers
     _conversationsSubscription?.cancel();
     _saveTimer?.cancel();
+    _debounceTimer?.cancel();
+
+    // Dispose of controllers
+    _newConversationController.dispose();
+    _feedbackController.dispose();
 
     // Try-catch the final save to prevent errors during disposal
     try {
@@ -555,7 +719,6 @@ class _ChatPageState extends State<ChatPage> {
         final currentHistory = List<ChatMessage>.from(_provider.history);
         if (currentHistory.isNotEmpty) {
           _conversations[_currentConversationIndex].history = currentHistory;
-          dev.log("Saving on dispose: ${currentHistory.length} messages");
 
           // Create a defensive copy before saving
           final conversationCopy = Conversation(
@@ -572,188 +735,227 @@ class _ChatPageState extends State<ChatPage> {
       debugPrint('Error saving during dispose: $e');
     }
 
-    _newConversationController.dispose();
     super.dispose();
   }
 
   // Widget to build the sidebar content
   Widget _buildSidebar(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: _isSidebarExpanded ? 280 : 0,
-      curve: Curves.easeInOut,
-      color: Theme.of(context).colorScheme.surface,
-      child:
-          _isSidebarExpanded
-              ? ClipRect(
-                // Add ClipRect to prevent overflow
-                child: Column(
-                  // Make sure the column doesn't overflow its container
-                  mainAxisSize: MainAxisSize.max,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Header container - Not inside scrollable area
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8, // Further reduced vertical padding
-                        horizontal: 12,
-                      ),
-                      child: Column(
-                        mainAxisSize:
-                            MainAxisSize.min, // Important to prevent overflow
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your Conversations',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              fontSize: 18, // Slightly smaller font size
-                            ),
+    // Using LayoutBuilder to constrain sidebar properly
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          width: _isSidebarExpanded ? 280 : 0,
+          curve: Curves.easeInOut,
+          color: Theme.of(context).colorScheme.surface,
+          // Use clipped container to avoid layout issues during animation
+          child:
+              _isSidebarExpanded
+                  ? ClipRect(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.max,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Header container
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 12,
                           ),
-                          const SizedBox(height: 6), // Reduced spacing
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _showNewConversationDialog,
-                              icon: const Icon(Icons.add, size: 16),
-                              label: const Text(
-                                'New Chat',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4, // Smaller padding
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your Conversations',
+                                style: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                  fontSize: 18,
                                 ),
                               ),
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: _showNewConversationDialog,
+                                  icon: const Icon(Icons.add, size: 16),
+                                  label: const Text(
+                                    'New Chat',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const Divider(height: 1, thickness: 0.5),
+
+                        // Conversation list - in Expanded to avoid overflow
+                        Expanded(
+                          child:
+                              _conversations.isEmpty
+                                  ? const Center(
+                                    child: Text('No conversations yet'),
+                                  )
+                                  : ListView.builder(
+                                    shrinkWrap: false,
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
+                                    padding: EdgeInsets.zero,
+                                    itemCount: _conversations.length,
+                                    itemBuilder: (context, index) {
+                                      final conversation =
+                                          _conversations[index];
+                                      final isHovered =
+                                          _hoveredConversationIndex == index;
+
+                                      // Wrap with MouseRegion to detect hover
+                                      return MouseRegion(
+                                        onEnter:
+                                            (_) => setState(() {
+                                              _hoveredConversationIndex = index;
+                                            }),
+                                        onExit:
+                                            (_) => setState(() {
+                                              if (_hoveredConversationIndex ==
+                                                  index) {
+                                                _hoveredConversationIndex =
+                                                    null;
+                                              }
+                                            }),
+                                        child: InkWell(
+                                          onTap:
+                                              () =>
+                                                  _switchToConversation(index),
+                                          child: Container(
+                                            color:
+                                                index ==
+                                                        _currentConversationIndex
+                                                    ? Theme.of(
+                                                      context,
+                                                    ).highlightColor
+                                                    : Colors.transparent,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 6,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                // Chat icon
+                                                const Padding(
+                                                  padding: EdgeInsets.only(
+                                                    right: 8.0,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.chat,
+                                                    size: 18,
+                                                  ),
+                                                ),
+
+                                                // Chat name - expanded to take available space
+                                                Expanded(
+                                                  child: Text(
+                                                    conversation.name,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          index ==
+                                                                  _currentConversationIndex
+                                                              ? FontWeight.bold
+                                                              : FontWeight
+                                                                  .normal,
+                                                    ),
+                                                  ),
+                                                ),
+
+                                                // Only show action buttons when hovered
+                                                if (isHovered) ...[
+                                                  // Edit button - compact
+                                                  InkWell(
+                                                    onTap:
+                                                        () =>
+                                                            _showRenameConversationDialog(
+                                                              index,
+                                                            ),
+                                                    child: const Padding(
+                                                      padding: EdgeInsets.all(
+                                                        6.0,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.edit,
+                                                        size: 16,
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                  // Small gap between buttons
+                                                  const SizedBox(width: 2),
+
+                                                  // Delete button - compact
+                                                  InkWell(
+                                                    onTap:
+                                                        () =>
+                                                            _deleteConversation(
+                                                              index,
+                                                            ),
+                                                    child: const Padding(
+                                                      padding: EdgeInsets.all(
+                                                        6.0,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.delete,
+                                                        size: 16,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                        ),
+
+                        const Divider(height: 1, thickness: 0.5),
+
+                        // Feedback button at the bottom
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 12,
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed:
+                                _currentConversationIndex >= 0
+                                    ? _showFeedbackDialog
+                                    : null,
+                            icon: const Icon(Icons.feedback, size: 16),
+                            label: const Text('Provide Feedback'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
+                              ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-
-                    // Divider between header and list - make it more compact
-                    const Divider(height: 1, thickness: 0.5),
-
-                    // Rest of content in Expanded to allow scrolling
-                    Expanded(
-                      child:
-                          _conversations.isEmpty
-                              ? const Center(
-                                child: Text('No conversations yet'),
-                              )
-                              : ListView.builder(
-                                // Make sure scrolling works properly
-                                shrinkWrap:
-                                    false, // Changed to false to avoid double scrolling
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                padding: EdgeInsets.zero,
-                                itemCount: _conversations.length,
-                                itemBuilder: (context, index) {
-                                  final conversation = _conversations[index];
-                                  final isHovered =
-                                      _hoveredConversationIndex == index;
-
-                                  // Wrap with MouseRegion to detect hover
-                                  return MouseRegion(
-                                    onEnter:
-                                        (_) => setState(() {
-                                          _hoveredConversationIndex = index;
-                                        }),
-                                    onExit:
-                                        (_) => setState(() {
-                                          if (_hoveredConversationIndex ==
-                                              index) {
-                                            _hoveredConversationIndex = null;
-                                          }
-                                        }),
-                                    child: InkWell(
-                                      onTap: () => _switchToConversation(index),
-                                      child: Container(
-                                        color:
-                                            index == _currentConversationIndex
-                                                ? Theme.of(
-                                                  context,
-                                                ).highlightColor
-                                                : Colors.transparent,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 6,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            // Chat icon
-                                            const Padding(
-                                              padding: EdgeInsets.only(
-                                                right: 8.0,
-                                              ),
-                                              child: Icon(Icons.chat, size: 18),
-                                            ),
-
-                                            // Chat name - expanded to take available space
-                                            Expanded(
-                                              child: Text(
-                                                conversation.name,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontWeight:
-                                                      index ==
-                                                              _currentConversationIndex
-                                                          ? FontWeight.bold
-                                                          : FontWeight.normal,
-                                                ),
-                                              ),
-                                            ),
-
-                                            // Only show action buttons when hovered
-                                            if (isHovered) ...[
-                                              // Edit button - compact
-                                              InkWell(
-                                                onTap:
-                                                    () =>
-                                                        _showRenameConversationDialog(
-                                                          index,
-                                                        ),
-                                                child: const Padding(
-                                                  padding: EdgeInsets.all(6.0),
-                                                  child: Icon(
-                                                    Icons.edit,
-                                                    size: 16,
-                                                  ),
-                                                ),
-                                              ),
-
-                                              // Small gap between buttons
-                                              const SizedBox(width: 2),
-
-                                              // Delete button - compact
-                                              InkWell(
-                                                onTap:
-                                                    () => _deleteConversation(
-                                                      index,
-                                                    ),
-                                                child: const Padding(
-                                                  padding: EdgeInsets.all(6.0),
-                                                  child: Icon(
-                                                    Icons.delete,
-                                                    size: 16,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                    ),
-                  ],
-                ),
-              )
-              : null,
+                  )
+                  : null,
+        );
+      },
     );
   }
 

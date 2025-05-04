@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_ai_toolkit/flutter_ai_toolkit.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_ai_toolkit/flutter_ai_toolkit.dart';
 
+/// An implementation of LlmProvider that connects to a FastAPI backend
 class FastApiLlmProvider extends LlmProvider with ChangeNotifier {
   FastApiLlmProvider({
     required this.baseUrl,
@@ -30,45 +31,31 @@ class FastApiLlmProvider extends LlmProvider with ChangeNotifier {
       'prompt': prompt,
       'attachments':
           attachments.map((a) {
-            // Convert attachments to the format expected by the API
             return {
               'type': a is ImageFileAttachment ? 'image' : 'text',
-              'data':
-                  a.toString(), // This would need proper serialization based on attachment type
+              'data': a.toString(),
             };
           }).toList(),
     });
 
     try {
-      final request = http.Request('POST', Uri.parse('$baseUrl/generate'));
-      request.headers['Content-Type'] = 'application/json';
-      request.body = requestBody;
-
-      final response = await http.Client().send(request);
+      final response = await http.post(
+        Uri.parse('$baseUrl/generate'),
+        headers: {'Content-Type': 'application/json'},
+        body: requestBody,
+      );
 
       if (response.statusCode != 200) {
         throw Exception('Failed to generate: ${response.statusCode}');
       }
 
-      // Process the event stream
-      await for (final chunk in response.stream.transform(utf8.decoder)) {
-        final lines = chunk.split('\n');
-        for (final line in lines) {
-          if (line.startsWith('data: ')) {
-            final dataJson = line.substring(6); // Remove 'data: '
-            try {
-              final data = jsonDecode(dataJson);
-              if (data.containsKey('chunk')) {
-                yield data['chunk'];
-              }
-            } catch (e) {
-              log('Error parsing chunk: $e');
-            }
-          }
-        }
-      }
+      final data = jsonDecode(response.body);
+      final fullResponse = data['response'];
+
+      // Return the full response as a single yield
+      yield fullResponse;
     } catch (e) {
-      log('Error generating stream: $e');
+      log('Error generating response: $e');
     }
   }
 
@@ -78,8 +65,7 @@ class FastApiLlmProvider extends LlmProvider with ChangeNotifier {
     Iterable<Attachment> attachments = const [],
   }) async* {
     final userMessage = ChatMessage.user(prompt, attachments);
-    final llmMessage = ChatMessage.llm();
-    _history.addAll([userMessage, llmMessage]);
+    _history.add(userMessage);
     notifyListeners();
 
     final requestBody = jsonEncode({
@@ -88,44 +74,36 @@ class FastApiLlmProvider extends LlmProvider with ChangeNotifier {
           attachments.map((a) {
             return {
               'type': a is ImageFileAttachment ? 'image' : 'text',
-              'data': a.toString(), // This would need proper serialization
+              'data': a.toString(),
             };
           }).toList(),
     });
 
     try {
-      final request = http.Request(
-        'POST',
+      final response = await http.post(
         Uri.parse('$baseUrl/send-message?session_id=$_sessionId'),
+        headers: {'Content-Type': 'application/json'},
+        body: requestBody,
       );
-      request.headers['Content-Type'] = 'application/json';
-      request.body = requestBody;
-
-      final response = await http.Client().send(request);
 
       if (response.statusCode != 200) {
         throw Exception('Failed to send message: ${response.statusCode}');
       }
 
-      await for (final chunk in response.stream.transform(utf8.decoder)) {
-        final lines = chunk.split('\n');
-        for (final line in lines) {
-          if (line.startsWith('data: ')) {
-            final dataJson = line.substring(6);
-            try {
-              final data = jsonDecode(dataJson);
-              if (data.containsKey('chunk')) {
-                final chunkText = data['chunk'];
-                llmMessage.append(chunkText);
-                yield chunkText;
-                notifyListeners();
-              }
-            } catch (e) {
-              log('Error parsing chunk: $e');
-            }
-          }
-        }
-      }
+      final data = jsonDecode(response.body);
+      final fullResponse = data['response'];
+
+      // Create and add LLM message with the full response
+      final llmMessage = ChatMessage(
+        attachments: attachments,
+        origin: MessageOrigin.llm,
+        text: fullResponse,
+      );
+      _history.add(llmMessage);
+      notifyListeners();
+
+      // Return the full response as a single yield
+      yield fullResponse;
     } catch (e) {
       log('Error sending message: $e');
     }
@@ -149,7 +127,7 @@ class FastApiLlmProvider extends LlmProvider with ChangeNotifier {
             return {
               'role': message.origin.isUser ? 'user' : 'llm',
               'content': message.text,
-              'attachments': [], // Simplified
+              'attachments': [],
             };
           }).toList();
 
