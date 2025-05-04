@@ -4,7 +4,7 @@ final List<InstallationStep> installationSteps = [
   InstallationStep(
     title: "Step 1: Open t4.m",
     content: "Open the MATLAB file named `t4.m` using MATLAB or any code editor.",
-    language: "text",
+    language: "matlab",
     code: """try
 
 
@@ -64,6 +64,7 @@ end
   InstallationStep(
     title: "Step 2: Write Your Code in the Try Section",
     content: "Insert your MATLAB code inside the try block where the comment says:",
+    language: 'matlab',
     code: """try
 
 A = [1, 2, 3; 4, 5, 6];
@@ -84,7 +85,7 @@ catch ME
   InstallationStep(
     title: "Step 3: Move smart_write.py",
     content: "Move the `smart_write.py` file into the same directory that contains `t4.m`.",
-    language: "bash",
+    language: "python",
     code: """import sys
 import os
 import json
@@ -124,11 +125,6 @@ code_lines = [ln.rstrip() for ln in lines if ln.strip()]
 
 # Write MATLAB script with proper quoting
 target_mat_file = "t4.m" ####give matlab file name
-
-
-
-
-
 
 
 

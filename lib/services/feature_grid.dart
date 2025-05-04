@@ -9,14 +9,16 @@ class FeatureGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final limitedFeatures = features.take(6).toList();
     final screenWidth = MediaQuery.of(context).size.width;
-
     int crossAxisCount = 3;
-    if (screenWidth < 1000) {
+    if (screenWidth < 1500)
+    {
       crossAxisCount = 2;
     }
-    if (screenWidth < 600) {
+    if(screenWidth < 1100)
+    {
       crossAxisCount = 1;
     }
+    
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -32,7 +34,7 @@ class FeatureGrid extends StatelessWidget {
                 crossAxisCount: crossAxisCount,
                 crossAxisSpacing: 32,
                 mainAxisSpacing: 32,
-                childAspectRatio: 1.75,
+                childAspectRatio:1.75
               ),
               itemBuilder: (context, index) =>
                   FeatureCard(feature: limitedFeatures[index]),

@@ -3,6 +3,7 @@ import 'package:matfixer/chat_page.dart';
 import 'package:matfixer/gemini_api_key.dart';
 import 'package:matfixer/services/feature_grid.dart';
 import 'package:matfixer/services/guide.dart';
+import 'package:matfixer/services/mywidget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -240,7 +241,7 @@ class _WelcomePageState extends State<WelcomePage> {
                                 borderRadius: BorderRadius.circular(40),
                               ),
                             ),
-                            child: Text('Download >'),
+                            child: Text('User Manual >'),
                           ),
                         ],
                       ),
