@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:matfixer/models/user_model.dart';
 import 'package:matfixer/services/auth_service.dart';
@@ -30,7 +32,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
               Future.microtask(() async {
                 try {
                   await _authService.signInAnonymously();
-                } catch (e) {
+                } catch (e, stackTrace) {
+                  log('Error signing in anonymously: $e');
+                  log('Stack trace: $stackTrace');
                   if (mounted) {
                     setState(() => _isSigningIn = false);
                   }

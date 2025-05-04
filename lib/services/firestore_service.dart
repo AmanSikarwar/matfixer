@@ -9,6 +9,9 @@ class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Cache to track last sent message counts to avoid redundant operations
+  final Map<String, int> _lastSavedMessageCounts = {};
+
   // Get current user ID, or generate an anonymous ID if not authenticated
   String get _userId {
     final user = _auth.currentUser;
@@ -29,27 +32,48 @@ class FirestoreService {
       // Create a defensive copy of the conversations list
       final conversationsCopy = List<Conversation>.from(conversations);
 
+      // Prepare a batch for all operations
+      final batch = _firestore.batch();
+      final pendingSaves = <Future<void>>[];
+
       // Add or update current conversations
       for (final conversation in conversationsCopy) {
-        // Add the current timestamp to ensure proper ordering
-        final conversationData = {
-          'name': conversation.name,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'messageCount': conversation.history.length,
-          'lastUpdated':
-              DateTime.now()
-                  .millisecondsSinceEpoch, // Add timestamp for sorting
-        };
+        // Only save if the conversation has changed
+        final lastSavedCount = _lastSavedMessageCounts[conversation.id] ?? 0;
+        final currentCount = conversation.history.length;
 
-        await _conversationsRef.doc(conversation.id).set(conversationData);
+        if (lastSavedCount != currentCount) {
+          // Add the current timestamp to ensure proper ordering
+          final conversationData = {
+            'name': conversation.name,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'messageCount': currentCount,
+            'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+          };
 
-        // Save messages to subcollection only if they're not empty
-        if (conversation.history.isNotEmpty) {
-          await _saveMessagesForConversation(
-            conversation.id,
-            conversation.history,
-          );
+          batch.set(_conversationsRef.doc(conversation.id), conversationData);
+
+          // Save messages to subcollection only if they're not empty
+          if (conversation.history.isNotEmpty) {
+            pendingSaves.add(
+              _saveMessagesForConversation(
+                conversation.id,
+                conversation.history,
+              ),
+            );
+          }
+
+          // Update the cache
+          _lastSavedMessageCounts[conversation.id] = currentCount;
         }
+      }
+
+      // Commit batch for conversation documents
+      await batch.commit();
+
+      // Wait for all message saves to complete
+      if (pendingSaves.isNotEmpty) {
+        await Future.wait(pendingSaves);
       }
     } catch (e, stackTrace) {
       log('Error saving conversations: $e');
@@ -69,87 +93,61 @@ class FirestoreService {
         return;
       }
 
-      log(
-        'Saving ${messages.length} messages for conversation $conversationId',
-      );
-
       // Create a defensive copy of the history to prevent concurrent modification
       final historyList = List<ChatMessage>.from(messages);
+      final currentCount = historyList.length;
+      final lastSavedCount = _lastSavedMessageCounts[conversationId] ?? 0;
 
-      try {
-        // First check if we need to delete existing messages
-        final existingMessages = await _messagesRef(conversationId).get();
+      // Only process if the message count has changed
+      if (currentCount != lastSavedCount) {
+        log(
+          'Saving $currentCount messages for conversation $conversationId (previously had $lastSavedCount)',
+        );
 
-        // If existing count differs from new count, we need to recreate
-        if (existingMessages.docs.length != historyList.length) {
-          // Delete existing messages first
-          if (existingMessages.docs.isNotEmpty) {
-            log('Deleting ${existingMessages.docs.length} existing messages');
-            final batch = _firestore.batch();
-            for (final doc in existingMessages.docs) {
-              batch.delete(doc.reference);
-            }
-            await batch.commit();
-          }
-
-          // Now add all messages with timestamps to maintain order
-          final batch = _firestore.batch();
-          int index = 0;
-
-          for (final msg in historyList) {
-            try {
-              final messageData = {
-                'text': msg.text,
-                'isUser': msg.origin.isUser,
-                'timestamp': Timestamp.now(),
-                'order': index++, // Use index to maintain order
-              };
-
-              // Create document with auto-generated ID
-              final docRef = _messagesRef(conversationId).doc();
-              batch.set(docRef, messageData);
-            } catch (e) {
-              log('Error processing message: $e');
-              continue;
-            }
-          }
-
-          await batch.commit();
-          log('Successfully saved ${historyList.length} messages');
-        } else {
-          // If counts match, assume we don't need to update
-          log('Message count matches existing messages, skipping update');
-        }
-      } catch (e) {
-        log('Error managing messages: $e');
-
-        // Fallback approach: just save all messages
         try {
-          final batch = _firestore.batch();
-          int index = 0;
-
-          // Delete all existing messages first
+          // First check if we need to delete existing messages
           final existingMessages = await _messagesRef(conversationId).get();
-          for (final doc in existingMessages.docs) {
-            batch.delete(doc.reference);
-          }
 
-          // Add all new messages
-          for (final msg in historyList) {
-            final messageData = {
-              'text': msg.text,
-              'isUser': msg.origin.isUser,
-              'timestamp': Timestamp.now(),
-              'order': index++,
-            };
-            batch.set(_messagesRef(conversationId).doc(), messageData);
-          }
+          // If existing count differs from new count, we need to recreate
+          if (existingMessages.docs.length != historyList.length) {
+            final batch = _firestore.batch();
 
-          await batch.commit();
-          log('Used fallback approach to save ${historyList.length} messages');
+            // Delete existing messages first if any exist
+            if (existingMessages.docs.isNotEmpty) {
+              for (final doc in existingMessages.docs) {
+                batch.delete(doc.reference);
+              }
+            }
+
+            // Now add all messages in a single batch
+            int index = 0;
+            for (final msg in historyList) {
+              try {
+                final messageData = {
+                  'text': msg.text,
+                  'isUser': msg.origin.isUser,
+                  'timestamp': Timestamp.now(),
+                  'order': index++,
+                };
+                batch.set(_messagesRef(conversationId).doc(), messageData);
+              } catch (e) {
+                log('Error processing message: $e');
+                continue;
+              }
+            }
+
+            await batch.commit();
+            _lastSavedMessageCounts[conversationId] = currentCount;
+            log('Successfully saved $currentCount messages in batch');
+          }
         } catch (e) {
-          log('Fallback save also failed: $e');
+          log('Error in batch message operation: $e');
+          throw e; // Rethrow to handle in the calling method
         }
+      } else {
+        log(
+          'Message count unchanged for conversation $conversationId, skipping save',
+        );
       }
     } catch (e) {
       log('Error in _saveMessagesForConversation: $e');
@@ -161,28 +159,42 @@ class FirestoreService {
     try {
       final snapshot =
           await _conversationsRef
-              .orderBy(
-                'lastUpdated',
-                descending: true,
-              ) // Use numeric timestamp for sorting
+              .orderBy('lastUpdated', descending: true)
               .get();
 
-      // Create list to store fully loaded conversations
       final List<Conversation> result = [];
+      final List<Future<void>> messageLoadFutures = [];
+      final Map<String, List<ChatMessage>> messagesMap = {};
 
-      // Load each conversation with its messages
+      // First, load all conversation metadata and prepare message loading futures
       for (final doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final String conversationId = doc.id;
 
-        // Load messages for this conversation
-        final messages = await _loadMessagesForConversation(conversationId);
+        // Store the messageCount for cache
+        final messageCount = data['messageCount'] as int? ?? 0;
+        _lastSavedMessageCounts[conversationId] = messageCount;
 
-        // Create conversation object with loaded messages
+        // Create a future for loading messages
+        messageLoadFutures.add(
+          _loadMessagesForConversation(conversationId).then((messages) {
+            messagesMap[conversationId] = messages;
+          }),
+        );
+      }
+
+      // Wait for all messages to load in parallel
+      await Future.wait(messageLoadFutures);
+
+      // Now create conversation objects with the loaded messages
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final String conversationId = doc.id;
+
         final conversation = Conversation(
           id: conversationId,
           name: data['name'] ?? 'Unnamed Conversation',
-          history: messages,
+          history: messagesMap[conversationId] ?? [],
         );
 
         result.add(conversation);
@@ -202,9 +214,7 @@ class FirestoreService {
   ) async {
     try {
       final snapshot =
-          await _messagesRef(conversationId)
-              .orderBy('order') // Order by the index field
-              .get();
+          await _messagesRef(conversationId).orderBy('order').get();
 
       final messages =
           snapshot.docs.map((doc) {
@@ -229,56 +239,88 @@ class FirestoreService {
   // Stream of conversations for real-time updates
   Stream<List<Conversation>> streamConversations() {
     return _conversationsRef
-        .orderBy(
-          'lastUpdated',
-          descending: true,
-        ) // Use numeric timestamp for sorting
+        .orderBy('lastUpdated', descending: true)
         .snapshots()
         .asyncMap((snapshot) async {
-          final List<Conversation> result = [];
+          try {
+            final List<Conversation> result = [];
+            final List<Future<void>> messageLoadFutures = [];
+            final Map<String, List<ChatMessage>> messagesMap = {};
 
-          // For each conversation, load its messages
-          for (final doc in snapshot.docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final String conversationId = doc.id;
+            // Load all conversation metadata first
+            for (final doc in snapshot.docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              final String conversationId = doc.id;
 
-            // Load messages for this conversation
-            final messages = await _loadMessagesForConversation(conversationId);
+              // Load messages for each conversation in parallel
+              messageLoadFutures.add(
+                _loadMessagesForConversation(conversationId).then((messages) {
+                  messagesMap[conversationId] = messages;
+                }),
+              );
+            }
 
-            // Create conversation object with loaded messages
-            final conversation = Conversation(
-              id: conversationId,
-              name: data['name'] ?? 'Unnamed Conversation',
-              history: messages,
-            );
+            // Wait for all messages to load
+            await Future.wait(messageLoadFutures);
 
-            result.add(conversation);
+            // Now build the conversation objects with loaded messages
+            for (final doc in snapshot.docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              final String conversationId = doc.id;
+
+              final conversation = Conversation(
+                id: conversationId,
+                name: data['name'] ?? 'Unnamed Conversation',
+                history: messagesMap[conversationId] ?? [],
+              );
+
+              result.add(conversation);
+            }
+
+            return result;
+          } catch (e) {
+            log('Error in streamConversations: $e');
+            // Return empty list rather than throwing to keep stream alive
+            return [];
           }
-
-          return result;
         });
   }
 
   // Save a single conversation
   Future<void> saveConversation(Conversation conversation) async {
     try {
-      // Add timestamp to ensure proper ordering
-      final conversationData = {
-        'name': conversation.name,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'messageCount': conversation.history.length,
-        'lastUpdated':
-            DateTime.now().millisecondsSinceEpoch, // Add timestamp for sorting
-      };
+      final currentCount = conversation.history.length;
+      final lastSavedCount = _lastSavedMessageCounts[conversation.id] ?? 0;
 
-      await _conversationsRef.doc(conversation.id).set(conversationData);
+      // Only save if the message count has changed
+      if (currentCount != lastSavedCount) {
+        // Add timestamp to ensure proper ordering
+        final conversationData = {
+          'name': conversation.name,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'messageCount': currentCount,
+          'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+        };
 
-      // Save all messages
-      await _saveMessagesForConversation(conversation.id, conversation.history);
+        await _conversationsRef.doc(conversation.id).set(conversationData);
 
-      log(
-        'Successfully saved conversation: ${conversation.name} with ${conversation.history.length} messages',
-      );
+        // Save messages
+        await _saveMessagesForConversation(
+          conversation.id,
+          conversation.history,
+        );
+
+        // Update cache
+        _lastSavedMessageCounts[conversation.id] = currentCount;
+
+        log(
+          'Successfully saved conversation: ${conversation.name} with $currentCount messages',
+        );
+      } else {
+        log(
+          'Message count unchanged for conversation ${conversation.name}, skipping save',
+        );
+      }
     } catch (e, stackTrace) {
       debugPrint('Error saving conversation: $e');
       log('Error stack trace: $stackTrace');
@@ -298,6 +340,9 @@ class FirestoreService {
 
       // Then delete the conversation document
       await _conversationsRef.doc(conversationId).delete();
+
+      // Remove from cache
+      _lastSavedMessageCounts.remove(conversationId);
     } catch (e, stackTrace) {
       debugPrint('Error deleting conversation: $e');
       log('Error stack trace: $stackTrace');
