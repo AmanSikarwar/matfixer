@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'matlab_chat_theme.dart';
-import 'package:matfixer/matlab_app_theme.dart';
-
 
 /// A utility class that provides MATLAB-themed ThemeData for Flutter applications.
 class MatlabAppTheme {

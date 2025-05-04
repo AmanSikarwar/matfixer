@@ -3,7 +3,8 @@ import 'package:matfixer/models/guide_model.dart';
 final List<InstallationStep> installationSteps = [
   InstallationStep(
     title: "Step 1: Open t4.m",
-    content: "Open the MATLAB file named `t4.m` using MATLAB or any code editor.",
+    content:
+        "Open the MATLAB file named `t4.m` using MATLAB or any code editor.",
     language: "matlab",
     code: """try
 
@@ -63,7 +64,8 @@ end
   ),
   InstallationStep(
     title: "Step 2: Write Your Code in the Try Section",
-    content: "Insert your MATLAB code inside the try block where the comment says:",
+    content:
+        "Insert your MATLAB code inside the try block where the comment says:",
     language: 'matlab',
     code: """try
 
@@ -80,11 +82,12 @@ catch ME
     % Prepare POST request to send the prompt
     serverURL = 'http://172.18.40.104:8001/generate'; % Replace with your desired server URL
     options = weboptions('Timeout', 10, 'MediaType', 'application/json');
-"""
+""",
   ),
   InstallationStep(
     title: "Step 3: Move smart_write.py",
-    content: "Move the `smart_write.py` file into the same directory that contains `t4.m`.",
+    content:
+        "Move the `smart_write.py` file into the same directory that contains `t4.m`.",
     language: "python",
     code: """import sys
 import os
@@ -168,7 +171,7 @@ with open(target_mat_file, 'w') as mat_file:
     mat_file.write('        % Call Python script\n')
     mat_file.write("        python_file = 'smart_write.py';\n")
     # Escape quotes in Python string for MATLAB command line
-    mat_file.write("        command = sprintf('python3 \"%s\" \"%s\"', python_file, temp_input_file);\n")
+    mat_file.write("        command = sprintf('python3 "%s" "%s"', python_file, temp_input_file);\n")
     mat_file.write('        status = system(command);\n\n')
     mat_file.write('        if status == 0\n')
     mat_file.write("            disp('Python script ran successfully.');\n")
@@ -185,7 +188,8 @@ print(f"Generated MATLAB script at {target_mat_file}")
   ),
   InstallationStep(
     title: "Step 4: Run t4.m in MATLAB",
-    content: "Run `t4.m` inside MATLAB. If your code throws an error, it will automatically send the code to the server and execute `smart_write.py`.",
+    content:
+        "Run `t4.m` inside MATLAB. If your code throws an error, it will automatically send the code to the server and execute `smart_write.py`.",
     language: "matlab",
     code: "run('t4.m');",
   ),

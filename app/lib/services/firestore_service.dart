@@ -249,7 +249,7 @@ class FirestoreService {
 
             // Load all conversation metadata first
             for (final doc in snapshot.docs) {
-              final data = doc.data() as Map<String, dynamic>;
+              doc.data() as Map<String, dynamic>;
               final String conversationId = doc.id;
 
               // Load messages for each conversation in parallel

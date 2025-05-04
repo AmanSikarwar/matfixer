@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:matfixer/models/user_model.dart';
 import 'package:matfixer/services/auth_service.dart';
 import 'package:matfixer/welcome_page.dart';
-import 'package:matfixer/screens/admin/admin_dashboard.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});

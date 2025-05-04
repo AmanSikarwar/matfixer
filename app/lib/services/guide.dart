@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
-import 'package:flutter_highlight/themes/github.dart';
 import 'package:matfixer/data/guide_data.dart';
 import 'package:matfixer/matlab_chat_theme.dart';
-import 'package:matfixer/models/guide_model.dart';
 import 'package:matfixer/services/mywidget.dart'; // Import the model file
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
-import 'package:matfixer/matlab_app_theme.dart';
 
 class InstallationGuideScreen extends StatefulWidget {
   const InstallationGuideScreen({super.key});
 
   @override
-  State<InstallationGuideScreen> createState() => _InstallationGuideScreenState();
+  State<InstallationGuideScreen> createState() =>
+      _InstallationGuideScreenState();
 }
 
 class _InstallationGuideScreenState extends State<InstallationGuideScreen> {
   final ItemScrollController _itemScrollController = ItemScrollController();
-  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
   int _currentIndex = 0;
 
   @override
@@ -31,7 +28,9 @@ class _InstallationGuideScreenState extends State<InstallationGuideScreen> {
     final positions = _itemPositionsListener.itemPositions.value;
     final visible = positions.where((pos) => pos.itemLeadingEdge >= 0).toList();
     if (visible.isNotEmpty) {
-      final firstVisible = visible.reduce((a, b) => a.itemLeadingEdge < b.itemLeadingEdge ? a : b);
+      final firstVisible = visible.reduce(
+        (a, b) => a.itemLeadingEdge < b.itemLeadingEdge ? a : b,
+      );
       if (_currentIndex != firstVisible.index) {
         setState(() {
           _currentIndex = firstVisible.index;
@@ -65,8 +64,12 @@ class _InstallationGuideScreenState extends State<InstallationGuideScreen> {
                   title: Text(
                     installationSteps[index].title,
                     style: TextStyle(
-                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                      color: isActive ? Theme.of(context).colorScheme.primary : null,
+                      fontWeight:
+                          isActive ? FontWeight.bold : FontWeight.normal,
+                      color:
+                          isActive
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
                     ),
                   ),
                   onTap: () => _scrollTo(index),
@@ -87,18 +90,29 @@ class _InstallationGuideScreenState extends State<InstallationGuideScreen> {
                   child: Card(
                     color: MatlabColors.lightBlueBackground,
                     elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(step.title, style: Theme.of(context).textTheme.titleLarge),
+                          Text(
+                            step.title,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
                           const SizedBox(height: 8),
-                          Text(step.content, style: Theme.of(context).textTheme.bodyMedium),
+                          Text(
+                            step.content,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                           if (step.code != null && step.language != null) ...[
                             const SizedBox(height: 16),
-                            MyWidget(code: step.code!, language: step.language!),
+                            MyWidget(
+                              code: step.code!,
+                              language: step.language!,
+                            ),
                           ],
                         ],
                       ),

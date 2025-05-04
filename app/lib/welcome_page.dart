@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:matfixer/chat_page.dart';
 import 'package:matfixer/services/feature_grid.dart';
 import 'package:matfixer/services/guide.dart';
-import 'package:matfixer/services/mywidget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:matfixer/services/auth_service.dart';
@@ -31,8 +30,6 @@ class _WelcomePageState extends State<WelcomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isAdmin = _authService.isAdmin();
-
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(400),
