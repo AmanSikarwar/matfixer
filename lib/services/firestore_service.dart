@@ -303,4 +303,15 @@ class FirestoreService {
       log('Error stack trace: $stackTrace');
     }
   }
+
+  // Add a method to save feedback to Firestore
+  Future<void> addFeedback(Map<String, dynamic> feedback) async {
+    try {
+      // Create a new document with an auto-generated ID
+      await FirebaseFirestore.instance.collection('/feedbacks').add(feedback);
+    } catch (e) {
+      debugPrint('Error adding feedback: $e');
+      throw Exception('Failed to add feedback: $e');
+    }
+  }
 }

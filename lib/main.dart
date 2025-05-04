@@ -1,4 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:matfixer/firebase_options.dart';
 import 'package:matfixer/matlab_app_theme.dart';
 import 'package:matfixer/screens/auth_wrapper.dart';
 import 'package:matfixer/services/auth_service.dart';
@@ -8,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final prefs = await SharedPreferences.getInstance();
   runApp(App(prefs: prefs));
 }
