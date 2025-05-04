@@ -1,184 +1,68 @@
-# AI‑Powered MATLAB Troubleshooter
+# MatFixer - Flutter Frontend Application
 
-This repository implements an agentic AI system for diagnosing and resolving MATLAB issues, built during our hackathon. It leverages multi‑agent orchestration to parse user queries, retrieve relevant documentation, analyze root causes, generate solutions, verify in MATLAB, and learn from feedback.
-
----
-
-## Table of Contents
-
-1. [Introduction](#introduction)
-2. [Tech Stack](#tech-stack)
-3. [Functioning of the Model](#functioning-of-the-model)
-4. [Features](#features)
-5. [Quick Start & Installation Guide](#quick-start--installation-guide)
-6. [Code Snippets](#code-snippets)
-
----
-
-## Introduction
-
-AI‑Powered MATLAB Troubleshooter is a multi‑agent system designed to streamline the process of diagnosing and fixing MATLAB errors. Users submit natural‑language queries or upload error logs, documents, or screenshots. The system automatically:
-
-* Parses the input
-* Retrieves context from MATLAB docs, StackOverflow, and the web
-* Analyzes the root cause
-* Generates step‑by‑step solutions
-* Verifies the fix in a live MATLAB session
-* Learns from user feedback for continuous improvement
-
-Our architecture uses a directed graph orchestrator (LangGraph) with specialized agents defined using CrewAI tools for modularity and scalability.
-
----
-
-## Tech Stack
-
-* **Orchestration:** LangGraph (graph‑based workflow engine)
-* **Agent Framework:** CrewAI (role‑based multi‑agent orchestration)
-* **Vector Store:** Chroma (embeddings storage and retrieval)
-* **Embeddings:** GTE‑Small (`thenlper/gte-small`)
-* **Reranker:** BGE Reranker (`BAAI/bge-reranker-base`)
-* **LLMs:**
-
-  * Google Gemini (`models/gemini-1.5-flash`, `GEMINI_API_KEY`)
-  * Groq Models (e.g., `llama-3.3-70b-versatile` via GroqCloud)
-* **MATLAB Integration:** MATLAB Engine API for Python
-* **Frontend:** FastAPI (REST API) + optional Streamlit/Gradio UI
-
-Configuration and dependencies are managed via a virtual environment and `requirements.txt`.
-
----
-
-## Functioning of the Model
-
-```mermaid
-flowchart LR
-  A[User Query] --> B[DocParserAgent]
-  A --> C[WebParserAgent]
-  B & C --> D[KnowledgeRetrieverAgent]
-  D --> E[DiagnosticAnalyzerAgent]
-  E --> F[SolutionGeneratorAgent]
-  F --> G[VerificationAgent]
-  G --> H[FeedbackLearningAgent]
-  H --> A[Updates KB]
-```
-
-1. **DocParserAgent**: Ingests user‑uploaded files (PDFs, images) via OCR and document loaders.
-2. **WebParserAgent**: Crawls live web content, forums, and community sites using CrewAI scraping tools.
-3. **KnowledgeRetrieverAgent**: Executes advanced RAG with Chroma, combining sparse keyword and dense vector search, plus cross‑encoder reranking.
-4. **DiagnosticAnalyzerAgent**: Uses RAG‑augmented LLM reasoning to pinpoint root causes.
-5. **SolutionGeneratorAgent**: Generates MATLAB code edits or commands in natural language.
-6. **VerificationAgent**: Runs and tests the solution via the MATLAB Engine API, capturing outputs or errors.
-7. **FeedbackLearningAgent**: Collects user validation, updates vector store with successful Q\&A pairs, or escalates failures.
-
----
+This Flutter application serves as the user interface for the MatFixer AI-Powered MATLAB Troubleshooter. It provides a chat interface for users to interact with the backend agents, manage conversations, and provide feedback.
 
 ## Features
 
-* **Multi‑Modal Input**: Supports text, document, and image inputs.
-* **Hybrid Retrieval**: Combines sparse and dense search across multiple sources.
-* **Iterative Refinement**: Self‑memory loops for continuous improvement.
-* **Live Verification**: Executes fixes in a sandboxed MATLAB session.
-* **Seamless API**: Exposes endpoints via FastAPI for integration.
-* **Pluggable LLMs**: Swap Google Gemini with Groq or local open‑source models.
-* **Scalable Graph Flow**: Extend or customize agent nodes with LangGraph.
+* **Chat Interface:** Utilizes the `flutter_ai_toolkit` package (`LlmChatView`) for a familiar chat UI.
+* **Backend Integration:** Connects to FastAPI backends (`Backend1` and `Backend2`) to send queries and receive generated responses/reports.
+* **Agent Switching:** Allows users to switch between different backend agents/configurations ("Agent 1" likely points to Backend2, "Agent 1 Advanced" likely points to Backend1) via a dropdown in the sidebar.
+* **Conversation Management:**
+  * Displays a list of past conversations in a collapsible sidebar.
+  * Allows creating new conversations, renaming existing ones, and deleting conversations.
+  * Persists conversations using Firebase Firestore.
+* **Feedback System:** Users can submit feedback on conversations (including whether the problem was resolved and a text comment), which is saved to Firestore.
+* **Admin Dashboard:** A separate view (`/admin/dashboard`) for authenticated admin users to view submitted feedback.
+* **User Authentication:** Supports anonymous sign-in for general users and email/password authentication for admins via Firebase Auth.
+* **MATLAB Integration Guide:** Includes a screen (`InstallationGuideScreen`) showing steps to integrate the troubleshooting capabilities directly into a user's MATLAB environment using provided `.m` and `.py` scripts.
+* **Theming:** Supports both light and dark themes, styled similarly to MATLAB's interface colors (`MatlabAppTheme`, `MatlabChatTheme`).
 
----
+## Architecture
 
-## Quick Start & Installation Guide
+* **UI:** Built with Flutter framework. Uses `Provider` for state management (like theme) and `flutter_ai_toolkit` for the core chat UI.
+* **State Management:** Primarily uses `StatefulWidget` and `ValueNotifier` for local UI state. `ChangeNotifier` is used within the `FastApiLlmProvider`.
+* **Backend Communication:** Uses the `http` package to make POST requests to the FastAPI backends defined in `lib/providers/fast_api_llm_provider.dart`.
+  * `Agent 1` points to `http://<backend_ip>:8002` (Likely `Backend2`).
+  * `Agent 1 Advanced` points to `http://<backend_ip>:8000` (Likely `Backend1`).
+* **Persistence:** Uses Firebase Firestore (`cloud_firestore`) to save and stream user conversations and submitted feedback.
+* **Authentication:** Uses Firebase Authentication (`firebase_auth`) for anonymous and email/password sign-in. `AuthService` handles authentication logic and admin checks.
 
-1. **Clone the repository**
+## Setup
 
-   ```bash
-   git clone <REPO_URL>
-   cd agentic-matlab-troubleshooter
-   ```
+1. **Install Flutter:** Ensure you have the Flutter SDK installed. See the [Flutter installation guide](https://docs.flutter.dev/get-started/install).
+2. **Clone Repository:** Clone this project.
+3. **Get Dependencies:** Navigate to the `app` directory and run:
 
-2. **Setup Python virtual environment**
+    ```bash
+    flutter pub get
+    ```
 
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate   # macOS/Linux
-   venv\Scripts\activate    # Windows
-   ```
+4. **Firebase Setup:**
+    * Create a Firebase project at [https://console.firebase.google.com/](https://console.firebase.google.com/).
+    * Enable **Authentication** (Anonymous and Email/Password providers).
+    * Enable **Firestore Database**. Set up Firestore security rules appropriately (e.g., allow authenticated users to read/write their own conversations/feedback).
+    * Configure your Flutter app for Firebase using the FlutterFire CLI: `flutterfire configure`. This will generate/update `lib/firebase_options.dart` and platform-specific configuration files (like `macos/Runner/GoogleService-Info.plist`).
+5. **Backend URLs:** Verify the backend URLs in `lib/providers/fast_api_llm_provider.dart` point to the correct IP address and ports where your `Backend1` and `Backend2` services are running. Use `localhost` or your local network IP.
 
-3. **Install dependencies**
+## Running
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. **Ensure Backends are Running:** Start `Backend1` (port 8000) and `Backend2` (port 8002) as described in their respective READMEs.
+2. **Run Flutter App:** Connect a device or start an emulator/simulator. Then run:
 
-4. **Configure environment variables**
-   Create a `.env` file in the project root with:
+    ```bash
+    flutter run -d <windows|macos|chrome>
+    ```
 
-   ```ini
-   GEMINI_API_KEY=your_google_api_key
-   GROQ_API_KEY=your_groq_api_key
-   ```
+    *(Select the desired target platform)*
 
-5. **Prepare embeddings**
+## Key Packages
 
-   ```bash
-   python scripts/build_embeddings.py   # generates and persists Chroma vector store
-   ```
-
-6. **Run the API server**
-
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-7. **Invoke the endpoint**
-
-   ```bash
-   curl -X POST http://localhost:8000/invoke \
-     -H "Content-Type: application/json" \
-     -d '{"query":"My MATLAB plot command fails"}'
-   ```
-
----
-
-## Code Snippets
-
-### Knowledge Retriever Node (LangGraph)
-
-```python
-# agents/knowledge_retriever/agent.py
-from langgraph import Node
-from langchain_chroma import Chroma
-
-db = Chroma(persist_directory="vectorstore/db_chroma", embedding_function=embeddings)
-retriever = db.as_retriever(search_type="similarity", search_kwargs={"k":25})
-
-def retrieve_node_fn(state):
-    docs = retriever.get_relevant_documents(state.query)
-    state.retrieved_docs = docs
-    return state
-
-KnowledgeRetrieverNode = Node(
-    name="KnowledgeRetriever",
-    func=retrieve_node_fn,
-    inputs=["query"],
-    outputs=["retrieved_docs"]
-)
-```
-
-### Verification Agent (MATLAB Engine)
-
-```python
-# agents/verification_agent/matlab_engine_wrapper.py
-import matlab.engine
-
-def matlab_run(code: str) -> dict:
-    eng = matlab.engine.start_matlab()
-    try:
-        eng.eval(code, nargout=0)
-        return {"status":"success"}
-    except matlab.engine.EngineError as e:
-        return {"status":"error", "message": str(e)}
-```
-
-*More code snippets will go here.*
-
----
-
-*For detailed agent implementations and additional examples, see the `agents/` directory.*
+* `flutter_ai_toolkit`: Provides the core `LlmChatView` widget and provider abstractions.
+* `firebase_core`, `firebase_auth`, `cloud_firestore`: Firebase integration.
+* `http`: For making API calls to backends.
+* `provider`: Simple state management.
+* `google_fonts`: For custom fonts.
+* `flutter_markdown`: For rendering Markdown responses from the backend.
+* `shared_preferences`: Used for potentially storing settings (though API key storage seems removed).
+* `uuid`: For generating unique conversation IDs.
+* `intl`: For date/time formatting.
