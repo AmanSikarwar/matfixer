@@ -5,6 +5,7 @@ import 'package:flutter_ai_toolkit/flutter_ai_toolkit.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:matfixer/main.dart';
 import 'package:matfixer/matlab_chat_theme.dart';
+import 'package:matfixer/providers/fast_api_llm_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:matfixer/services/firestore_service.dart';
 
@@ -46,17 +47,28 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _newConversationController =
       TextEditingController();
 
+  // Add text controller for feedback
+  final TextEditingController _feedbackController = TextEditingController();
+
   // Sidebar state
   bool _isSidebarExpanded = true;
 
   // Timer for periodic saving
   Timer? _saveTimer;
 
-  late final _provider = GeminiProvider(
-    model: GenerativeModel(
-      model: 'gemini-2.0-flash',
-      apiKey: widget.geminiApiKey,
-    ),
+  // late final _provider = GeminiProvider(
+  //   model: GenerativeModel(
+  //     model: 'gemini-2.0-flash',
+  //     apiKey: widget.geminiApiKey,
+  //   ),
+  // );
+
+  late final _provider = FastApiLlmProvider(
+    baseUrl: 'http://172.18.40.104:8002',
+    history:
+        _conversations.isNotEmpty
+            ? _conversations[_currentConversationIndex].history
+            : [],
   );
 
   // Add Firestore service
@@ -527,6 +539,134 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  // Show dialog to collect feedback
+  Future<void> _showFeedbackDialog() async {
+    _feedbackController.clear();
+
+    // Initialize problem resolved state
+    bool isProblemResolved = false;
+
+    return showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            // Use StatefulBuilder to allow checkbox state to update
+            builder:
+                (context, setState) => AlertDialog(
+                  title: const Text('Provide Feedback'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Problem resolution checkbox
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: isProblemResolved,
+                            onChanged: (value) {
+                              setState(() {
+                                isProblemResolved = value ?? false;
+                              });
+                            },
+                          ),
+                          const Text('Did you get your problem resolved?'),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      const Text(
+                        'Please share your feedback about the current conversation:',
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _feedbackController,
+                        decoration: const InputDecoration(
+                          hintText: 'Your feedback here',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 4,
+                        autofocus: true,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Note: Your feedback will include the entire conversation history.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _sendFeedback(
+                          _feedbackController.text,
+                          isProblemResolved,
+                        );
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Submit'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+  }
+
+  // Send feedback to Firestore
+  Future<void> _sendFeedback(String comment, bool isProblemResolved) async {
+    if (_currentConversationIndex >= 0 &&
+        _currentConversationIndex < _conversations.length) {
+      try {
+        // Get current conversation details
+        final conversation = _conversations[_currentConversationIndex];
+
+        // Create feedback data
+        final feedback = {
+          'conversationId': conversation.id,
+          'conversationName': conversation.name,
+          'timestamp': DateTime.now().toIso8601String(),
+          'comment': comment,
+          'isProblemResolved':
+              isProblemResolved, // Add the problem resolution status
+          'history':
+              conversation.history
+                  .map(
+                    (msg) => {
+                      'role': msg.origin.isUser ? 'user' : 'llm',
+                      'content': msg.text,
+                    },
+                  )
+                  .toList(),
+        };
+
+        // Save feedback to Firestore
+        await _firestoreService.addFeedback(feedback);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thank you for your feedback!')),
+        );
+      } catch (e) {
+        debugPrint('Error sending feedback: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to send feedback. Please try again.'),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No active conversation to provide feedback on.'),
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -545,6 +685,11 @@ class _ChatPageState extends State<ChatPage> {
     // Cancel subscriptions and timers
     _conversationsSubscription?.cancel();
     _saveTimer?.cancel();
+
+    // Dispose of controllers
+    _newConversationController.dispose();
+    _feedbackController
+        .dispose(); // Add this line to dispose feedback controller
 
     // Try-catch the final save to prevent errors during disposal
     try {
@@ -749,6 +894,31 @@ class _ChatPageState extends State<ChatPage> {
                                   );
                                 },
                               ),
+                    ),
+
+                    // Add divider above feedback button
+                    const Divider(height: 1, thickness: 0.5),
+
+                    // Add feedback button at the bottom of sidebar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed:
+                            _currentConversationIndex >= 0
+                                ? _showFeedbackDialog
+                                : null,
+                        icon: const Icon(Icons.feedback, size: 16),
+                        label: const Text('Provide Feedback'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
