@@ -2,8 +2,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:matfixer/firebase_options.dart';
 import 'package:matfixer/matlab_app_theme.dart';
+import 'package:matfixer/screens/admin/admin_dashboard.dart';
+import 'package:matfixer/screens/auth_page.dart';
 import 'package:matfixer/screens/auth_wrapper.dart';
 import 'package:matfixer/services/auth_service.dart';
+import 'package:matfixer/welcome_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,6 +43,11 @@ class _AppState extends State<App> {
             themeMode: value,
             home: AuthWrapper(),
             debugShowCheckedModeBanner: false,
+            routes: {
+              '/welcome': (context) => WelcomePage(),
+              '/admin/dashboard': (context) => const AdminDashboard(),
+              '/auth': (context) => const AuthPage(),
+            },
           ),
     ),
   );

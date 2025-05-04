@@ -66,7 +66,11 @@ class _AuthPageState extends State<AuthPage> {
       } finally {
         if (mounted) {
           setState(() {
-            _isLoading = false;
+            if (FirebaseAuth.instance.currentUser != null) {
+              Navigator.of(context).pushReplacementNamed('/welcome');
+            } else {
+              _isLoading = false;
+            }
           });
         }
       }

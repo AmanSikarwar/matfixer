@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_ai_toolkit/flutter_ai_toolkit.dart';
 import 'package:matfixer/main.dart';
 import 'package:matfixer/matlab_chat_theme.dart';
-import 'package:matfixer/providers/fast_api_llm_provider.dart';
+import 'package:matfixer/providers/llm_providers.dart';
 import 'package:uuid/uuid.dart';
 import 'package:matfixer/services/firestore_service.dart';
 
@@ -60,13 +60,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   // Flag to track app lifecycle state for better resource management
   bool _isInForeground = true;
 
-  late final _provider = FastApiLlmProvider(
-    baseUrl: 'http://172.18.40.104:8002',
-    history:
-        _conversations.isNotEmpty
-            ? _conversations[_currentConversationIndex].history
-            : [],
-  );
+  // Current LLM provider type
+  LlmProviderType _currentProviderType = LlmProviderType.agent1;
+
+  late LlmProvider _provider;
 
   // Add Firestore service
   final FirestoreService _firestoreService = FirestoreService();
@@ -85,6 +82,55 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   // Add hover tracking state
   int? _hoveredConversationIndex;
+
+  // Initialize provider
+  void _initializeProvider() {
+    _provider = LlmProviderFactory.createProvider(
+      _currentProviderType,
+      history:
+          _conversations.isNotEmpty && _currentConversationIndex >= 0
+              ? _conversations[_currentConversationIndex].history
+              : [],
+      apiKey: widget.geminiApiKey,
+    );
+
+    // Listen for changes to the provider's history
+    _provider.addListener(_onProviderHistoryChanged);
+  }
+
+  // Change the current LLM provider
+  void _changeProvider(LlmProviderType newProviderType) {
+    if (newProviderType == _currentProviderType) return;
+
+    // Save current history
+    final currentHistory = List<ChatMessage>.from(_provider.history);
+
+    // Remove listener from old provider
+    _provider.removeListener(_onProviderHistoryChanged);
+
+    setState(() {
+      _currentProviderType = newProviderType;
+
+      // Create new provider with same history
+      _provider = LlmProviderFactory.createProvider(
+        newProviderType,
+        history: currentHistory,
+        apiKey: widget.geminiApiKey,
+      );
+
+      // Update the current conversation's history with the most recent history
+      if (_currentConversationIndex >= 0 &&
+          _currentConversationIndex < _conversations.length) {
+        _conversations[_currentConversationIndex].history = currentHistory;
+      }
+    });
+
+    // Add listener to new provider
+    _provider.addListener(_onProviderHistoryChanged);
+
+    // Save the updated conversation
+    _debouncedSave();
+  }
 
   // Debounced save function to prevent excessive Firestore operations
   void _debouncedSave() {
@@ -147,9 +193,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         if (_conversations.isNotEmpty) {
           _currentConversationIndex = 0;
 
-          // Make a defensive copy of the history
-          final historyList = List<ChatMessage>.from(_conversations[0].history);
-          _provider.history = historyList;
+          // Initialize provider with the loaded history
+          _initializeProvider();
         } else {
           // Create a default conversation if none exists
           _createNewConversationWithoutSaving(name: 'New Chat');
@@ -187,7 +232,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     setState(() {
       _conversations.add(newConversation);
       _currentConversationIndex = _conversations.length - 1;
-      _provider.history = [];
+      _initializeProvider();
     });
   }
 
@@ -676,6 +721,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     // Register for lifecycle events
     WidgetsBinding.instance.addObserver(this);
 
+    // Initialize provider
+    _initializeProvider();
+
     // Load saved conversations from Firestore
     _loadConversations();
 
@@ -929,6 +977,49 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
                         const Divider(height: 1, thickness: 0.5),
 
+                        // LLM Provider dropdown selection
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 12,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Active Agent',
+                                style: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              DropdownButton<LlmProviderType>(
+                                value: _currentProviderType,
+                                onChanged: (LlmProviderType? newValue) {
+                                  if (newValue != null) {
+                                    _changeProvider(newValue);
+                                  }
+                                },
+                                items:
+                                    LlmProviderType.values.map<
+                                      DropdownMenuItem<LlmProviderType>
+                                    >((LlmProviderType value) {
+                                      return DropdownMenuItem<LlmProviderType>(
+                                        value: value,
+                                        child: Text(value.displayName),
+                                      );
+                                    }).toList(),
+                                isExpanded:
+                                    true, // Make dropdown take full width
+                                icon: const Icon(Icons.swap_horiz),
+                              ),
+                            ],
+                          ),
+                        ),
+
                         // Feedback button at the bottom
                         Padding(
                           padding: const EdgeInsets.symmetric(
@@ -962,6 +1053,20 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
+      leadingWidth: 84,
+      leading: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          IconButton(
+            icon: Icon(_isSidebarExpanded ? Icons.menu_open : Icons.menu),
+            tooltip: _isSidebarExpanded ? 'Collapse Sidebar' : 'Expand Sidebar',
+            onPressed: _toggleSidebar,
+          ),
+        ],
+      ),
       title: Text(
         _isLoading
             ? 'Loading...'
@@ -971,12 +1076,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                 : App.title),
         overflow: TextOverflow.ellipsis, // Handle possible overflow in title
       ),
-      leading: IconButton(
-        icon: Icon(_isSidebarExpanded ? Icons.menu_open : Icons.menu),
-        onPressed: _toggleSidebar,
-        tooltip: _isSidebarExpanded ? 'Collapse Sidebar' : 'Expand Sidebar',
-      ),
       actions: [
+        // Removed dropdown for LLM provider selection (moved to sidebar)
         IconButton(
           onPressed: _showNewConversationDialog,
           tooltip: 'New Conversation',
@@ -986,11 +1087,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           onPressed: _clearHistory,
           tooltip: 'Clear History',
           icon: const Icon(Icons.clear_all),
-        ),
-        IconButton(
-          onPressed: widget.onResetApiKey,
-          tooltip: 'Reset API Key',
-          icon: const Icon(Icons.key),
         ),
         IconButton(
           onPressed:

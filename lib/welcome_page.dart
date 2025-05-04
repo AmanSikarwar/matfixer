@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:matfixer/chat_page.dart';
-import 'package:matfixer/gemini_api_key.dart';
 import 'package:matfixer/services/feature_grid.dart';
 import 'package:matfixer/services/guide.dart';
 import 'package:matfixer/services/mywidget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:matfixer/services/auth_service.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -17,18 +17,11 @@ class WelcomePage extends StatefulWidget {
 class _WelcomePageState extends State<WelcomePage> {
   String? _geminiApiKey;
   late final SharedPreferences prefs;
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
-    _initializePrefs();
-  }
-
-  Future<void> _initializePrefs() async {
-    prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _geminiApiKey = prefs.getString('gemini_api_key') ?? geminiApiKey;
-    });
   }
 
   void _resetApiKey() {
@@ -38,6 +31,8 @@ class _WelcomePageState extends State<WelcomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isAdmin = _authService.isAdmin();
+
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(400),
@@ -97,19 +92,54 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                 ),
               ),
+              if (true) // Always show the admin button
+                Padding(
+                  padding: const EdgeInsets.only(right: 12.0),
+                  child: TextButton.icon(
+                    onPressed: () {
+                      if (_authService.isAdmin()) {
+                        Navigator.of(context).pushNamed('/admin/dashboard');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('You are not an admin.'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    icon: Icon(
+                      Icons.admin_panel_settings,
+                      color: Color(0xFFC24E0F),
+                      size: 24,
+                    ),
+                    label: Text(
+                      'Admin',
+                      style: TextStyle(color: Color(0xFFC24E0F)),
+                    ),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.only(right: 12.0),
                 child: TextButton.icon(
-                  onPressed: () {},
-                  icon: Icon(
-                    Icons.admin_panel_settings,
-                    color: Color(0xFFC24E0F),
-                    size: 24,
-                  ),
-                  label: Text(
-                    'Admin',
-                    style: TextStyle(color: Color(0xFFC24E0F)),
-                  ),
+                  onPressed: () async {
+                    await _authService.signOut();
+                    if (mounted) {
+                      Navigator.of(context).pushReplacementNamed('/auth');
+                    }
+                  },
+                  icon: Icon(Icons.logout, color: Colors.red, size: 24),
+                  label: Text('Sign Out', style: TextStyle(color: Colors.red)),
                   style: TextButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shape: RoundedRectangleBorder(

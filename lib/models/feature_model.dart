@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class Feature {
   final String icon;
   final String title;
