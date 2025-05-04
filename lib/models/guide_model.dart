@@ -1,7 +1,13 @@
 class InstallationStep {
   final String title;
   final String content;
-  final String language;
+  final String? code;
+  final String? language;
 
-  InstallationStep({required this.title, required this.content, required this.language});
+  InstallationStep({
+    required this.title,
+    required this.content,
+    this.language,
+    this.code,
+  });
 }
