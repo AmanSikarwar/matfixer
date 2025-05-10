@@ -38,7 +38,7 @@ graph LR
         B1_State[AppState: state.py]
         B1_LLM[Groq LLM]
         B1_Agents[Agents: RAG Root/Sol, Web, Synthesizer]
-        B1_Chroma[ChromaDB (Docs/StackO)]
+        B1_Chroma[ChromaDB Docs/StackO]
         B1_Tavily[Tavily Search]
 
         B1_API --> B1_LG;
@@ -52,10 +52,10 @@ graph LR
     subgraph Backend2 ["Backend 2 (Port 8002)"]
        direction TB
         B2_API[FastAPI: chat_api2.py]
-        B2_LG[LangGraph (in API)]
+        B2_LG[LangGraph in API]
         B2_State[AgentState]
         B2_LLM[Gemini LLM]
-        B2_Chroma[ChromaDB (Docs/StackO)]
+        B2_Chroma[ChromaDB Docs/StackO]
         B2_Reranker[Reranker]
 
         B2_API -- Defines/Runs --> B2_LG;
@@ -67,7 +67,7 @@ graph LR
 
     subgraph Services
        Firebase[Firebase: Auth, Firestore]
-       MATLAB[MATLAB (Integration)]
+       MATLAB[MATLAB Integration]
     end
 
     UI <--> F_API;
@@ -81,7 +81,6 @@ graph LR
     style Backend1 fill:#ccf,stroke:#333,stroke-width:2px
     style Backend2 fill:#cdf,stroke:#333,stroke-width:2px
     style Services fill:#ff9,stroke:#333,stroke-width:2px
-
 ```
 
 ## Project Structure
