@@ -1,6 +1,6 @@
 # MatFixer: AI-Powered MATLAB Troubleshooter
 
-This repository contains the code for MatFixer, an AI-powered system designed to help users diagnose and resolve issues within their MATLAB code. It utilizes a multi-agent architecture built with LangGraph, FastAPI backends, and a Flutter frontend.
+This repository contains the code for MatFixer, an AI-powered system that assists users in diagnosing and fixing issues in their MATLAB code. It features a multi-agent architecture built using LangGraph, FastAPI for the backend, and a Flutter frontend.
 
 ## Architecture Overview
 
